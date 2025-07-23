@@ -9,128 +9,216 @@ struct MacSystemMonitorApp: App {
             ContentView()
                 .environmentObject(monitoringService)
         }
-        .windowStyle(.hiddenTitleBar)
-        .windowResizability(.contentSize)
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Toggle Test Mode") {
+                    toggleTestMode()
+                }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
+                
+                Button("Generate Test Event") {
+                    generateTestEvent()
+                }
+                .keyboardShortcut("g", modifiers: [.command, .shift])
+            }
+        }
     }
     
-    init() {
-        // Check command line arguments
-        let arguments = CommandLine.arguments
+    private func toggleTestMode() {
+        var config = AppConfig.loadFromFile()
+        config.testModeSettings.enableTestMode.toggle()
+        config.saveToFile()
         
-        if arguments.count > 1 {
-            switch arguments[1] {
-            case "--install":
-                if !SecurityManager.isRunningAsAdministrator() {
-                    print("Error: Administrative privileges required to install service.")
-                    exit(1)
-                }
-                
-                SecurityManager.installAsService()
-                SecurityManager.protectConfiguration()
-                SecurityManager.preventUninstallation()
-                SecurityManager.addGatekeeperExclusion()
-                print("Service installed successfully.")
-                exit(0)
-                
-            case "--uninstall":
-                if !SecurityManager.isRunningAsAdministrator() {
-                    print("Error: Administrative privileges required to uninstall service.")
-                    exit(1)
-                }
-                
-                // Send uninstall notification before removing service
-                Task {
-                    await monitoringService.sendUninstallNotification()
-                }
-                
-                SecurityManager.uninstallService()
-                print("Service uninstalled successfully.")
-                exit(0)
-                
-            case "--service":
-                // Run as background service
-                print("Running as background service...")
-                monitoringService.startMonitoring()
-                
-                // Keep the service running
-                RunLoop.main.run()
-                
-            case "--validate-admin":
-                let email = arguments.count > 2 ? arguments[2] : ""
-                let token = arguments.count > 3 ? arguments[3] : ""
-                
-                if SecurityManager.validateAdminAccess(email: email, token: token) {
-                    print("Admin access validated successfully.")
-                    exit(0)
-                } else {
-                    print("Error: Admin access denied.")
-                    exit(1)
-                }
-                
-            case "--uninstall-notification":
-                // Send uninstall notification only
-                Task {
-                    await monitoringService.sendUninstallNotification()
-                }
-                exit(0)
-                
-            default:
-                break
-            }
+        // Restart monitoring with new configuration
+        monitoringService.stopMonitoring()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            monitoringService.startMonitoring()
         }
         
-        // Check if running as administrator for normal operation
-        if !SecurityManager.isRunningAsAdministrator() {
-            print("This application requires administrative privileges to monitor system activities.")
-            
-            // Try to restart with elevated privileges
-            let task = Process()
-            task.launchPath = "/usr/bin/osascript"
-            task.arguments = [
-                "-e",
-                "do shell script \"\(Bundle.main.executablePath!)\" with administrator privileges"
-            ]
-            
-            do {
-                try task.run()
-                exit(0)
-            } catch {
-                print("Failed to request administrative privileges.")
-                exit(1)
-            }
-        }
+        print("Test mode \(config.testModeSettings.enableTestMode ? "enabled" : "disabled")")
+    }
+    
+    private func generateTestEvent() {
+        let testActivity = ActivityEvent(
+            type: .system,
+            description: "Manual test event generated",
+            severity: .medium,
+            details: ["ManualTest": "true", "Timestamp": ISO8601DateFormatter().string(from: Date())]
+        )
         
-        // Log security event
-        SecurityManager.logSecurityEvent("Application started", NSUserName())
-        
-        // Check if service is installed and running
-        if SecurityManager.isServiceInstalled() {
-            if SecurityManager.isServiceRunning() {
-                print("Mac System Monitor is already running as a service.")
-                exit(0)
-            }
-        }
-        
-        // Set up monitoring service delegate
-        monitoringService.delegate = self
+        monitoringService.addActivity(testActivity)
+        print("Test event generated")
     }
 }
 
-// MARK: - Monitoring Service Delegate Implementation
+// MARK: - Command Line Interface
 
-extension MacSystemMonitorApp: MonitoringServiceDelegate {
-    func activityDetected(_ activity: ActivityEvent) {
-        // Log activity to system log
-        let logMessage = "[\(activity.type.displayName)] \(activity.description)"
+class CommandLineInterface {
+    static func processArguments() {
+        let arguments = CommandLine.arguments
         
-        let task = Process()
-        task.launchPath = "/usr/bin/logger"
-        task.arguments = ["-t", "MacSystemMonitor", logMessage]
+        if arguments.contains("--test-mode") {
+            enableTestMode()
+        } else if arguments.contains("--service") {
+            runAsService()
+        } else if arguments.contains("--help") {
+            printHelp()
+        } else if arguments.contains("--safe-test") {
+            runSafeTest()
+        }
+    }
+    
+    private static func enableTestMode() {
+        var config = AppConfig.loadFromFile()
+        config.testModeSettings.enableTestMode = true
+        config.testModeSettings.preventSystemChanges = true
+        config.saveToFile()
         
-        do {
-            try task.run()
-        } catch {
-            print("Failed to log activity: \(error)")
+        print("Test mode enabled - no system changes will be made")
+        print("Configuration saved to: \(FileManager.default.currentDirectoryPath)/config.json")
+    }
+    
+    private static func runAsService() {
+        print("Starting Mac System Monitor as service...")
+        
+        // Initialize monitoring service
+        let monitoringService = MonitoringService()
+        monitoringService.startMonitoring()
+        
+        // Keep the service running
+        RunLoop.main.run()
+    }
+    
+    private static func runSafeTest() {
+        print("Running safe test mode...")
+        print("This will simulate events without making any system changes")
+        
+        var config = AppConfig.loadFromFile()
+        config.testModeSettings.enableTestMode = true
+        config.testModeSettings.preventSystemChanges = true
+        config.testModeSettings.simulateUsbEvents = true
+        config.testModeSettings.simulateFileTransfers = true
+        config.testModeSettings.simulateAppInstallations = true
+        config.testModeSettings.simulateNetworkActivity = true
+        config.testModeSettings.testIntervalSeconds = 10
+        config.saveToFile()
+        
+        let monitoringService = MonitoringService(config: config)
+        monitoringService.startMonitoring()
+        
+        print("Safe test mode started. Press Ctrl+C to stop.")
+        
+        // Run for 60 seconds then stop
+        DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
+            monitoringService.stopMonitoring()
+            print("Safe test completed")
+            exit(0)
+        }
+        
+        RunLoop.main.run()
+    }
+    
+    private static func printHelp() {
+        print("""
+        Mac System Monitor - Command Line Options
+        
+        --test-mode      Enable test mode (no system changes)
+        --service        Run as background service
+        --safe-test      Run a 60-second safe test
+        --help          Show this help message
+        
+        Examples:
+        ./MacSystemMonitor --safe-test    # Run safe test for 60 seconds
+        ./MacSystemMonitor --test-mode    # Enable test mode
+        ./MacSystemMonitor --service      # Run as service
+        
+        Test Mode Features:
+        - Simulates USB events without blocking devices
+        - Simulates file transfers without monitoring real files
+        - Simulates app installations without monitoring processes
+        - Simulates network activity without monitoring connections
+        - Uses test webhook URL for N8N integration
+        - Prevents all system changes and admin operations
+        """)
+    }
+}
+
+// MARK: - Main Entry Point
+
+@main
+struct MacSystemMonitorApp: App {
+    init() {
+        // Process command line arguments
+        CommandLineInterface.processArguments()
+    }
+    
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Toggle Test Mode") {
+                    toggleTestMode()
+                }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
+                
+                Button("Generate Test Event") {
+                    generateTestEvent()
+                }
+                .keyboardShortcut("g", modifiers: [.command, .shift])
+                
+                Divider()
+                
+                Button("Run Safe Test") {
+                    runSafeTest()
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+            }
+        }
+    }
+    
+    private func toggleTestMode() {
+        var config = AppConfig.loadFromFile()
+        config.testModeSettings.enableTestMode.toggle()
+        config.saveToFile()
+        
+        print("Test mode \(config.testModeSettings.enableTestMode ? "enabled" : "disabled")")
+    }
+    
+    private func generateTestEvent() {
+        let testActivity = ActivityEvent(
+            type: .system,
+            description: "Manual test event generated",
+            severity: .medium,
+            details: ["ManualTest": "true", "Timestamp": ISO8601DateFormatter().string(from: Date())]
+        )
+        
+        // Add to monitoring service if available
+        print("Test event generated")
+    }
+    
+    private func runSafeTest() {
+        print("Starting safe test mode...")
+        
+        var config = AppConfig.loadFromFile()
+        config.testModeSettings.enableTestMode = true
+        config.testModeSettings.preventSystemChanges = true
+        config.testModeSettings.simulateUsbEvents = true
+        config.testModeSettings.simulateFileTransfers = true
+        config.testModeSettings.simulateAppInstallations = true
+        config.testModeSettings.simulateNetworkActivity = true
+        config.testModeSettings.testIntervalSeconds = 10
+        config.saveToFile()
+        
+        let monitoringService = MonitoringService(config: config)
+        monitoringService.startMonitoring()
+        
+        print("Safe test mode started. Will run for 60 seconds.")
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
+            monitoringService.stopMonitoring()
+            print("Safe test completed")
         }
     }
 } 

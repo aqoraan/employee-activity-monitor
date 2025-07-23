@@ -10,6 +10,7 @@ struct AppConfig: Codable {
     var securitySettings: SecuritySettings = SecuritySettings()
     var usbBlockingSettings: UsbBlockingSettings = UsbBlockingSettings()
     var uninstallDetectionSettings: UninstallDetectionSettings = UninstallDetectionSettings()
+    var testModeSettings: TestModeSettings = TestModeSettings()
     
     static func loadFromFile(filePath: String = "config.json") -> AppConfig {
         do {
@@ -138,4 +139,19 @@ struct UninstallDetectionSettings: Codable {
     var includeMacAddresses: Bool = true
     var includeSerialNumbers: Bool = true
     var includeProcessDetails: Bool = true
+} 
+
+// MARK: - Test Mode Settings
+struct TestModeSettings: Codable {
+    var enableTestMode: Bool = false
+    var simulateUsbEvents: Bool = true
+    var simulateFileTransfers: Bool = true
+    var simulateAppInstallations: Bool = true
+    var simulateNetworkActivity: Bool = true
+    var testIntervalSeconds: Int = 30
+    var logTestEvents: Bool = true
+    var preventSystemChanges: Bool = true
+    var useTestWebhook: Bool = true
+    var testWebhookUrl: String = "http://localhost:5678/webhook/test"
+    var maxTestEvents: Int = 100
 } 

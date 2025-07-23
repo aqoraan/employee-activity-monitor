@@ -1,0 +1,79 @@
+{
+  "n8nWebhookUrl": "http://localhost:5678/webhook/test",
+  "blacklistedApps": ["tor", "vpn", "proxy"],
+  "suspiciousDomains": ["mega.nz", "dropbox.com"],
+  "monitoringSettings": {
+    "enableUsbMonitoring": true,
+    "enableFileTransferMonitoring": true,
+    "enableAppInstallationMonitoring": true,
+    "enableNetworkMonitoring": true,
+    "enableBlacklistedAppMonitoring": true,
+    "logLevel": "Medium",
+    "maxLogEntries": 1000,
+    "autoStartMonitoring": false,
+    "sendToN8n": true,
+    "n8nRetryAttempts": 3,
+    "n8nRetryDelayMs": 5000,
+    "requireAdminAccess": false
+  },
+  "emailSettings": {
+    "smtpServer": "smtp.gmail.com",
+    "smtpPort": 587,
+    "useSsl": true,
+    "username": "",
+    "password": "",
+    "fromEmail": "test@yourcompany.com",
+    "toEmail": "admin@yourcompany.com",
+    "ccEmail": "",
+    "enableEmailAlerts": false
+  },
+  "securitySettings": {
+    "googleWorkspaceAdmin": "",
+    "googleWorkspaceToken": "",
+    "preventUninstallation": false,
+    "protectConfiguration": false,
+    "logSecurityEvents": true,
+    "requireGoogleWorkspaceAdmin": false,
+    "autoStartOnBoot": false,
+    "runAsService": false,
+    "protectRegistry": false,
+    "addGatekeeperExclusion": false
+  },
+  "usbBlockingSettings": {
+    "enableUsbBlocking": false,
+    "googleSheetsApiKey": "",
+    "googleSheetsSpreadsheetId": "",
+    "googleSheetsRange": "A:A",
+    "cacheExpirationMinutes": 5,
+    "blockAllUsbStorage": false,
+    "allowWhitelistedOnly": false,
+    "logBlockedDevices": true,
+    "sendBlockingAlerts": true,
+    "localWhitelist": [],
+    "localBlacklist": []
+  },
+  "uninstallDetectionSettings": {
+    "enableUninstallDetection": false,
+    "sendUninstallNotifications": false,
+    "captureDeviceInfo": true,
+    "logUninstallAttempts": true,
+    "requireAdminForUninstall": false,
+    "sendDeviceFingerprint": true,
+    "includeMacAddresses": true,
+    "includeSerialNumbers": true,
+    "includeProcessDetails": true
+  },
+  "testModeSettings": {
+    "enableTestMode": true,
+    "simulateUsbEvents": true,
+    "simulateFileTransfers": true,
+    "simulateAppInstallations": true,
+    "simulateNetworkActivity": true,
+    "testIntervalSeconds": 15,
+    "logTestEvents": true,
+    "preventSystemChanges": true,
+    "useTestWebhook": true,
+    "testWebhookUrl": "http://localhost:5678/webhook/test",
+    "maxTestEvents": 50
+  }
+}

@@ -1,186 +1,130 @@
 import SwiftUI
 
 struct ContentView: View {
-    @EnvironmentObject var monitoringService: MonitoringService
+    @StateObject private var monitoringService = MonitoringService()
+    @State private var selectedTab = 0
     @State private var showingSettings = false
-    @State private var showingExport = false
+    @State private var isTestMode = false
     
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            headerView
-            
-            // Main content
-            HStack(spacing: 0) {
-                // Sidebar
-                sidebarView
-                    .frame(width: 250)
-                
-                // Main content area
-                mainContentView
-            }
-        }
-        .frame(minWidth: 800, minHeight: 600)
-        .sheet(isPresented: $showingSettings) {
-            SettingsView()
-        }
-        .sheet(isPresented: $showingExport) {
-            ExportView(activities: monitoringService.activities)
-        }
-    }
-    
-    // MARK: - Header View
-    
-    private var headerView: some View {
-        HStack {
-            Image(systemName: "shield.checkered")
-                .font(.title2)
-                .foregroundColor(.blue)
-            
-            Text("Mac System Monitor")
-                .font(.title2)
-                .fontWeight(.semibold)
-            
-            Spacer()
-            
-            // Status indicators
-            HStack(spacing: 16) {
-                statusIndicator(
-                    title: "Monitoring",
-                    status: monitoringService.monitoringStatus,
-                    icon: "eye"
-                )
-                
-                statusIndicator(
-                    title: "USB Blocking",
-                    status: monitoringService.usbBlockingStatus,
-                    icon: "usb"
-                )
-            }
-            
-            Spacer()
-            
-            // Action buttons
-            HStack(spacing: 12) {
-                Button("Settings") {
-                    showingSettings = true
-                }
-                .buttonStyle(.bordered)
-                
-                Button("Export") {
-                    showingExport = true
-                }
-                .buttonStyle(.bordered)
-            }
-        }
-        .padding()
-        .background(Color(NSColor.controlBackgroundColor))
-        .border(Color.gray.opacity(0.3), width: 1)
-    }
-    
-    // MARK: - Sidebar View
-    
-    private var sidebarView: some View {
-        VStack(spacing: 0) {
-            // Control panel
-            VStack(spacing: 16) {
-                Text("Controls")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                
-                VStack(spacing: 12) {
-                    Button(action: {
-                        if monitoringService.monitoringStatus.isRunning {
-                            monitoringService.stopMonitoring()
-                        } else {
-                            monitoringService.startMonitoring()
-                        }
-                    }) {
-                        HStack {
-                            Image(systemName: monitoringService.monitoringStatus.isRunning ? "stop.circle" : "play.circle")
-                            Text(monitoringService.monitoringStatus.isRunning ? "Stop Monitoring" : "Start Monitoring")
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    
-                    Button("Test N8N Connection") {
-                        testN8nConnection()
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(!monitoringService.monitoringStatus.isRunning)
-                }
-                
-                Divider()
-                
-                // Statistics
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Statistics")
-                        .font(.headline)
-                    
-                    StatisticRow(title: "Total Activities", value: "\(monitoringService.activities.count)")
-                    StatisticRow(title: "High Severity", value: "\(monitoringService.activities.filter { $0.severity == .high || $0.severity == .critical }.count)")
-                    StatisticRow(title: "USB Events", value: "\(monitoringService.activities.filter { $0.type == .usbDrive || $0.type == .usbBlocked }.count)")
-                }
-            }
-            .padding()
-            
-            Spacer()
-        }
-        .background(Color(NSColor.controlBackgroundColor))
-        .border(Color.gray.opacity(0.3), width: 1)
-    }
-    
-    // MARK: - Main Content View
-    
-    private var mainContentView: some View {
-        VStack(spacing: 0) {
-            // Activity log header
             HStack {
-                Text("Activity Log")
-                    .font(.headline)
+                VStack(alignment: .leading) {
+                    Text("Mac System Monitor")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    HStack {
+                        StatusIndicator(status: monitoringService.monitoringStatus)
+                        Text(monitoringService.monitoringStatus.displayName)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        if isTestMode {
+                            Text("TEST MODE")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.orange)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Color.orange.opacity(0.2))
+                                .cornerRadius(4)
+                        }
+                    }
+                }
                 
                 Spacer()
                 
-                Button("Clear") {
-                    monitoringService.activities.removeAll()
+                // Test Mode Toggle
+                Toggle("Test Mode", isOn: $isTestMode)
+                    .toggleStyle(SwitchToggleStyle())
+                    .onChange(of: isTestMode) { newValue in
+                        toggleTestMode(newValue)
+                    }
+                
+                Button(action: {
+                    showingSettings = true
+                }) {
+                    Image(systemName: "gear")
+                        .font(.title2)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(PlainButtonStyle())
             }
             .padding()
             .background(Color(NSColor.controlBackgroundColor))
             
-            // Activity list
-            List(monitoringService.activities) { activity in
-                ActivityRowView(activity: activity)
+            // Tab View
+            TabView(selection: $selectedTab) {
+                // Dashboard Tab
+                DashboardView(monitoringService: monitoringService)
+                    .tabItem {
+                        Image(systemName: "chart.bar")
+                        Text("Dashboard")
+                    }
+                    .tag(0)
+                
+                // Activities Tab
+                ActivitiesView(activities: monitoringService.activities)
+                    .tabItem {
+                        Image(systemName: "list.bullet")
+                        Text("Activities")
+                    }
+                    .tag(1)
+                
+                // USB Blocking Tab
+                UsbBlockingView(monitoringService: monitoringService)
+                    .tabItem {
+                        Image(systemName: "externaldrive")
+                        Text("USB Control")
+                    }
+                    .tag(2)
+                
+                // Settings Tab
+                SettingsView(monitoringService: monitoringService)
+                    .tabItem {
+                        Image(systemName: "gear")
+                        Text("Settings")
+                    }
+                    .tag(3)
             }
-            .listStyle(PlainListStyle())
         }
-        .background(Color(NSColor.windowBackgroundColor))
+        .frame(minWidth: 800, minHeight: 600)
+        .sheet(isPresented: $showingSettings) {
+            SettingsView(monitoringService: monitoringService)
+        }
     }
     
-    // MARK: - Status Indicator
-    
-    private func statusIndicator(title: String, status: MonitoringStatus, icon: String) -> some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .foregroundColor(statusColor(status))
-                Text(title)
-                    .font(.caption)
-            }
-            
-            Text(status.displayName)
-                .font(.caption2)
-                .foregroundColor(statusColor(status))
+    private func toggleTestMode(_ enabled: Bool) {
+        // Stop current monitoring
+        monitoringService.stopMonitoring()
+        
+        // Update configuration
+        var config = AppConfig.loadFromFile()
+        config.testModeSettings.enableTestMode = enabled
+        
+        // Save configuration
+        config.saveToFile()
+        
+        // Restart monitoring with new configuration
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            monitoringService.startMonitoring()
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(statusColor(status).opacity(0.1))
-        .cornerRadius(6)
+    }
+}
+
+// MARK: - Status Indicator
+
+struct StatusIndicator: View {
+    let status: MonitoringStatus
+    
+    var body: some View {
+        Circle()
+            .fill(statusColor)
+            .frame(width: 8, height: 8)
     }
     
-    private func statusColor(_ status: MonitoringStatus) -> Color {
+    private var statusColor: Color {
         switch status {
         case .running:
             return .green
@@ -190,187 +134,326 @@ struct ContentView: View {
             return .orange
         }
     }
+}
+
+// MARK: - Dashboard View
+
+struct DashboardView: View {
+    @ObservedObject var monitoringService: MonitoringService
     
-    private func statusColor(_ status: UsbBlockingStatus) -> Color {
-        switch status {
-        case .enabled:
-            return .green
-        case .disabled:
-            return .red
-        case .error:
-            return .orange
+    var body: some View {
+        VStack(spacing: 20) {
+            // Control Buttons
+            HStack(spacing: 20) {
+                Button(action: {
+                    if monitoringService.monitoringStatus.isRunning {
+                        monitoringService.stopMonitoring()
+                    } else {
+                        monitoringService.startMonitoring()
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: monitoringService.monitoringStatus.isRunning ? "stop.fill" : "play.fill")
+                        Text(monitoringService.monitoringStatus.isRunning ? "Stop Monitoring" : "Start Monitoring")
+                    }
+                    .padding()
+                    .background(monitoringService.monitoringStatus.isRunning ? Color.red : Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+                }
+                
+                Button(action: {
+                    monitoringService.activities.removeAll()
+                }) {
+                    HStack {
+                        Image(systemName: "trash")
+                        Text("Clear Activities")
+                    }
+                    .padding()
+                    .background(Color.orange)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+                }
+            }
+            
+            // Statistics
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 20) {
+                StatCard(title: "Total Activities", value: "\(monitoringService.activities.count)", color: .blue)
+                StatCard(title: "USB Events", value: "\(usbEventCount)", color: .green)
+                StatCard(title: "File Transfers", value: "\(fileTransferCount)", color: .orange)
+                StatCard(title: "App Installations", value: "\(appInstallationCount)", color: .purple)
+                StatCard(title: "Network Events", value: "\(networkEventCount)", color: .red)
+                StatCard(title: "Blocked Devices", value: "\(blockedDeviceCount)", color: .red)
+            }
+            
+            // Recent Activities
+            VStack(alignment: .leading) {
+                Text("Recent Activities")
+                    .font(.headline)
+                    .padding(.horizontal)
+                
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(monitoringService.activities.prefix(10)) { activity in
+                            ActivityRow(activity: activity)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+            }
         }
+        .padding()
     }
     
-    // MARK: - Actions
+    private var usbEventCount: Int {
+        monitoringService.activities.filter { $0.type == .usbDrive || $0.type == .usbBlocked }.count
+    }
     
-    private func testN8nConnection() {
-        let testActivity = ActivityEvent(
-            type: .system,
-            description: "N8N connection test",
-            severity: .low,
-            details: ["Test": "true"]
-        )
-        
-        Task {
-            // This will trigger the N8N send
-            await monitoringService.sendToN8n(testActivity)
-        }
+    private var fileTransferCount: Int {
+        monitoringService.activities.filter { $0.type == .fileTransfer }.count
+    }
+    
+    private var appInstallationCount: Int {
+        monitoringService.activities.filter { $0.type == .appInstallation || $0.type == .blacklistedApp }.count
+    }
+    
+    private var networkEventCount: Int {
+        monitoringService.activities.filter { $0.type == .networkActivity }.count
+    }
+    
+    private var blockedDeviceCount: Int {
+        monitoringService.activities.filter { $0.type == .usbBlocked }.count
     }
 }
 
-// MARK: - Activity Row View
+// MARK: - Stat Card
 
-struct ActivityRowView: View {
+struct StatCard: View {
+    let title: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(value)
+                .font(.title)
+                .fontWeight(.bold)
+                .foregroundColor(color)
+            
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding()
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(8)
+    }
+}
+
+// MARK: - Activity Row
+
+struct ActivityRow: View {
     let activity: ActivityEvent
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: activity.type.icon)
-                    .foregroundColor(severityColor(activity.severity))
+        HStack {
+            Image(systemName: activity.severity.icon)
+                .foregroundColor(Color(activity.severity.color))
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(activity.description)
+                    .font(.caption)
+                    .fontWeight(.medium)
                 
-                Text(activity.type.displayName)
+                Text(activity.timestamp, style: .time)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Text(activity.type.displayName)
+                .font(.caption2)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.blue.opacity(0.2))
+                .cornerRadius(4)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Activities View
+
+struct ActivitiesView: View {
+    let activities: [ActivityEvent]
+    
+    var body: some View {
+        VStack {
+            HStack {
+                Text("Activity Log")
                     .font(.headline)
                 
                 Spacer()
                 
-                Text(activity.timestamp, style: .time)
+                Text("\(activities.count) events")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+            .padding()
             
-            Text(activity.description)
-                .font(.body)
-            
-            if !activity.details.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(Array(activity.details.keys.sorted()), id: \.self) { key in
-                        if let value = activity.details[key] {
-                            HStack {
-                                Text(key)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                                Text(value)
-                                    .font(.caption)
-                                    .foregroundColor(.primary)
-                            }
-                        }
-                    }
-                }
-                .padding(.leading)
+            List(activities) { activity in
+                ActivityRow(activity: activity)
             }
         }
-        .padding(.vertical, 4)
-    }
-    
-    private func severityColor(_ severity: ActivitySeverity) -> Color {
-        switch severity {
-        case .low:
-            return .green
-        case .medium:
-            return .yellow
-        case .high:
-            return .orange
-        case .critical:
-            return .red
-        }
     }
 }
 
-// MARK: - Statistic Row View
+// MARK: - USB Blocking View
 
-struct StatisticRow: View {
-    let title: String
-    let value: String
+struct UsbBlockingView: View {
+    @ObservedObject var monitoringService: MonitoringService
     
     var body: some View {
-        HStack {
-            Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
+        VStack(spacing: 20) {
+            // USB Blocking Status
+            VStack(spacing: 10) {
+                Text("USB Blocking Status")
+                    .font(.headline)
+                
+                HStack {
+                    Circle()
+                        .fill(monitoringService.usbBlockingStatus.isEnabled ? Color.green : Color.red)
+                        .frame(width: 12, height: 12)
+                    
+                    Text(monitoringService.usbBlockingStatus.displayName)
+                        .font(.subheadline)
+                }
+            }
+            .padding()
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(8)
+            
+            // USB Blocking Controls
+            VStack(spacing: 10) {
+                Text("USB Blocking Controls")
+                    .font(.headline)
+                
+                HStack(spacing: 20) {
+                    Button("Refresh Whitelist") {
+                        Task {
+                            await monitoringService.usbBlockingService?.refreshWhitelist()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    
+                    Button("Test USB Event") {
+                        // This would trigger a test USB event in test mode
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            .padding()
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(8)
+            
             Spacer()
-            Text(value)
-                .font(.caption)
-                .fontWeight(.semibold)
         }
-    }
-}
-
-// MARK: - Activity Type Icon Extension
-
-extension ActivityType {
-    var icon: String {
-        switch self {
-        case .usbDrive:
-            return "externaldrive"
-        case .usbBlocked:
-            return "externaldrive.badge.xmark"
-        case .uninstallDetected:
-            return "trash"
-        case .fileTransfer:
-            return "doc.on.doc"
-        case .appInstallation:
-            return "app.badge.plus"
-        case .blacklistedApp:
-            return "exclamationmark.triangle"
-        case .networkActivity:
-            return "network"
-        case .system:
-            return "gear"
-        }
+        .padding()
     }
 }
 
 // MARK: - Settings View
 
 struct SettingsView: View {
+    @ObservedObject var monitoringService: MonitoringService
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         VStack {
-            Text("Settings")
-                .font(.title)
-            
-            Text("Settings functionality will be implemented here.")
-                .foregroundColor(.secondary)
-            
-            Button("Close") {
-                dismiss()
+            HStack {
+                Text("Settings")
+                    .font(.title)
+                
+                Spacer()
+                
+                Button("Done") {
+                    dismiss()
+                }
             }
-            .buttonStyle(.borderedProminent)
+            .padding()
+            
+            TabView {
+                // General Settings
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("General Settings")
+                        .font(.headline)
+                    
+                    Toggle("Enable USB Monitoring", isOn: .constant(true))
+                    Toggle("Enable File Transfer Monitoring", isOn: .constant(true))
+                    Toggle("Enable App Installation Monitoring", isOn: .constant(true))
+                    Toggle("Enable Network Monitoring", isOn: .constant(true))
+                    Toggle("Send to N8N", isOn: .constant(true))
+                    
+                    Spacer()
+                }
+                .padding()
+                .tabItem {
+                    Image(systemName: "gear")
+                    Text("General")
+                }
+                
+                // Test Mode Settings
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Test Mode Settings")
+                        .font(.headline)
+                    
+                    Toggle("Enable Test Mode", isOn: .constant(false))
+                    Toggle("Simulate USB Events", isOn: .constant(true))
+                    Toggle("Simulate File Transfers", isOn: .constant(true))
+                    Toggle("Simulate App Installations", isOn: .constant(true))
+                    Toggle("Simulate Network Activity", isOn: .constant(true))
+                    Toggle("Use Test Webhook", isOn: .constant(true))
+                    
+                    Spacer()
+                }
+                .padding()
+                .tabItem {
+                    Image(systemName: "testtube.2")
+                    Text("Test Mode")
+                }
+            }
         }
-        .padding()
-        .frame(width: 400, height: 300)
+        .frame(width: 500, height: 400)
     }
 }
 
-// MARK: - Export View
+// MARK: - Activity Severity Extension
 
-struct ExportView: View {
-    let activities: [ActivityEvent]
-    @Environment(\.dismiss) private var dismiss
+extension ActivitySeverity {
+    var icon: String {
+        switch self {
+        case .low:
+            return "info.circle"
+        case .medium:
+            return "exclamationmark.triangle"
+        case .high:
+            return "exclamationmark.octagon"
+        case .critical:
+            return "xmark.octagon.fill"
+        }
+    }
     
-    var body: some View {
-        VStack {
-            Text("Export Activities")
-                .font(.title)
-            
-            Text("Export functionality will be implemented here.")
-                .foregroundColor(.secondary)
-            
-            Button("Close") {
-                dismiss()
-            }
-            .buttonStyle(.borderedProminent)
+    var color: String {
+        switch self {
+        case .low:
+            return "green"
+        case .medium:
+            return "yellow"
+        case .high:
+            return "orange"
+        case .critical:
+            return "red"
         }
-        .padding()
-        .frame(width: 400, height: 300)
     }
-}
-
-#Preview {
-    ContentView()
-        .environmentObject(MonitoringService())
 } 

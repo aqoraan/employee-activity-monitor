@@ -78,6 +78,9 @@ class SimpleTestService: ObservableObject {
         )
         
         addEvent(event)
+        
+        // Enhanced logging with device information
+        logEnhancedEvent(event)
     }
     
     private func generateTestEvents() {
@@ -92,6 +95,8 @@ class SimpleTestService: ObservableObject {
         
         for event in testEvents {
             addEvent(event)
+            // Enhanced logging with device information
+            logEnhancedEvent(event)
         }
     }
     
@@ -202,6 +207,305 @@ class SimpleTestService: ObservableObject {
             }
             
             print("Test event generated: \(event.description)")
+        }
+    }
+    
+    // MARK: - Enhanced Logging Integration
+    
+    private func logEnhancedEvent(_ event: TestEvent) {
+        // Get device information
+        let deviceInfo = getDeviceInfo()
+        
+        // Create enhanced log entry
+        let enhancedLogEntry = createEnhancedLogEntry(event: event, deviceInfo: deviceInfo)
+        
+        // Print enhanced log to console
+        printEnhancedLog(enhancedLogEntry)
+        
+        // Also log to file if possible
+        logToFile(enhancedLogEntry)
+    }
+    
+    private func getDeviceInfo() -> [String: Any] {
+        let hostname = ProcessInfo.processInfo.hostName
+        
+        // Get system information
+        let serialNumber = getSystemSerialNumber()
+        let macAddresses = getMacAddresses()
+        let hardwareUUID = getHardwareUUID()
+        let modelIdentifier = getModelIdentifier()
+        let processorInfo = getProcessorInfo()
+        let memoryInfo = getMemoryInfo()
+        let diskInfo = getDiskInfo()
+        
+        return [
+            "serialNumber": serialNumber,
+            "primaryMacAddress": macAddresses.first ?? "Unknown",
+            "allMacAddresses": macAddresses,
+            "biosSerialNumber": serialNumber,
+            "motherboardSerialNumber": serialNumber,
+            "hardwareUUID": hardwareUUID,
+            "modelIdentifier": modelIdentifier,
+            "processorInfo": processorInfo,
+            "memoryInfo": memoryInfo,
+            "diskInfo": diskInfo,
+            "installationPath": "/Applications/MacSystemMonitor.app",
+            "deviceFingerprint": createDeviceFingerprint(hostname: hostname, serialNumber: serialNumber)
+        ]
+    }
+    
+    private func getSystemSerialNumber() -> String {
+        let task = Process()
+        task.launchPath = "/usr/sbin/system_profiler"
+        task.arguments = ["SPHardwareDataType"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if let range = output.range(of: "Serial Number: "),
+               let endRange = output[range.upperBound...].firstIndex(of: "\n") {
+                return String(output[range.upperBound..<endRange]).trimmingCharacters(in: .whitespaces)
+            }
+        } catch {
+            print("Error getting serial number: \(error)")
+        }
+        
+        return "Unknown"
+    }
+    
+    private func getMacAddresses() -> [String] {
+        var addresses: [String] = []
+        
+        // Get primary MAC address
+        let task = Process()
+        task.launchPath = "/sbin/ifconfig"
+        task.arguments = ["en0"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if let range = output.range(of: "ether "),
+               let endRange = output[range.upperBound...].firstIndex(of: " ") {
+                let mac = String(output[range.upperBound..<endRange]).trimmingCharacters(in: .whitespaces)
+                addresses.append(mac)
+            }
+        } catch {
+            print("Error getting MAC address: \(error)")
+        }
+        
+        return addresses.isEmpty ? ["Unknown"] : addresses
+    }
+    
+    private func getHardwareUUID() -> String {
+        let task = Process()
+        task.launchPath = "/usr/sbin/system_profiler"
+        task.arguments = ["SPHardwareDataType"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if let range = output.range(of: "Hardware UUID: "),
+               let endRange = output[range.upperBound...].firstIndex(of: "\n") {
+                return String(output[range.upperBound..<endRange]).trimmingCharacters(in: .whitespaces)
+            }
+        } catch {
+            print("Error getting Hardware UUID: \(error)")
+        }
+        
+        return "Unknown"
+    }
+    
+    private func getModelIdentifier() -> String {
+        let task = Process()
+        task.launchPath = "/usr/sbin/system_profiler"
+        task.arguments = ["SPHardwareDataType"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if let range = output.range(of: "Model Identifier: "),
+               let endRange = output[range.upperBound...].firstIndex(of: "\n") {
+                return String(output[range.upperBound..<endRange]).trimmingCharacters(in: .whitespaces)
+            }
+        } catch {
+            print("Error getting Model Identifier: \(error)")
+        }
+        
+        return "Unknown"
+    }
+    
+    private func getProcessorInfo() -> String {
+        let task = Process()
+        task.launchPath = "/usr/sbin/system_profiler"
+        task.arguments = ["SPHardwareDataType"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if let range = output.range(of: "Chip: "),
+               let endRange = output[range.upperBound...].firstIndex(of: "\n") {
+                return String(output[range.upperBound..<endRange]).trimmingCharacters(in: .whitespaces)
+            }
+        } catch {
+            print("Error getting Processor Info: \(error)")
+        }
+        
+        return "Unknown"
+    }
+    
+    private func getMemoryInfo() -> String {
+        let task = Process()
+        task.launchPath = "/usr/sbin/system_profiler"
+        task.arguments = ["SPHardwareDataType"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if let range = output.range(of: "Memory: "),
+               let endRange = output[range.upperBound...].firstIndex(of: "\n") {
+                return String(output[range.upperBound..<endRange]).trimmingCharacters(in: .whitespaces)
+            }
+        } catch {
+            print("Error getting Memory Info: \(error)")
+        }
+        
+        return "Unknown"
+    }
+    
+    private func getDiskInfo() -> String {
+        let task = Process()
+        task.launchPath = "/bin/df"
+        task.arguments = ["-h", "/"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            let lines = output.components(separatedBy: "\n")
+            if lines.count > 1 {
+                let parts = lines[1].components(separatedBy: " ")
+                if parts.count > 1 {
+                    return parts[1]
+                }
+            }
+        } catch {
+            print("Error getting Disk Info: \(error)")
+        }
+        
+        return "Unknown"
+    }
+    
+    private func createDeviceFingerprint(hostname: String, serialNumber: String) -> String {
+        let fingerprint = "\(hostname)-\(serialNumber)-\(Date().timeIntervalSince1970)"
+        return fingerprint.data(using: .utf8)?.base64EncodedString() ?? "Unknown"
+    }
+    
+    private func createEnhancedLogEntry(event: TestEvent, deviceInfo: [String: Any]) -> [String: Any] {
+        return [
+            "timestamp": ISO8601DateFormatter().string(from: event.timestamp),
+            "type": event.type.rawValue,
+            "severity": event.severity.rawValue,
+            "description": event.description,
+            "computer": ProcessInfo.processInfo.hostName,
+            "user": NSUserName(),
+            "details": event.details,
+            "deviceInfo": deviceInfo,
+            "testEvent": true
+        ]
+    }
+    
+    private func printEnhancedLog(_ logEntry: [String: Any]) {
+        print("🔍 ENHANCED LOG ENTRY:")
+        print("📅 Time: \(logEntry["timestamp"] ?? "Unknown")")
+        print("🖥️ Computer: \(logEntry["computer"] ?? "Unknown")")
+        print("👤 User: \(logEntry["user"] ?? "Unknown")")
+        
+        if let deviceInfo = logEntry["deviceInfo"] as? [String: Any] {
+            print("📱 Serial Number: \(deviceInfo["serialNumber"] ?? "Unknown")")
+            print("🌐 MAC Address: \(deviceInfo["primaryMacAddress"] ?? "Unknown")")
+            print("🔧 Hardware UUID: \(deviceInfo["hardwareUUID"] ?? "Unknown")")
+            print("💻 Model: \(deviceInfo["modelIdentifier"] ?? "Unknown")")
+            print("⚡ Processor: \(deviceInfo["processorInfo"] ?? "Unknown")")
+            print("💾 Memory: \(deviceInfo["memoryInfo"] ?? "Unknown")")
+            print("💿 Disk: \(deviceInfo["diskInfo"] ?? "Unknown")")
+        } else {
+            print("📱 Serial Number: Unknown")
+            print("🌐 MAC Address: Unknown")
+            print("🔧 Hardware UUID: Unknown")
+            print("💻 Model: Unknown")
+            print("⚡ Processor: Unknown")
+            print("💾 Memory: Unknown")
+            print("💿 Disk: Unknown")
+        }
+        
+        print("🎯 Event: \(logEntry["description"] ?? "Unknown")")
+        
+        if let details = logEntry["details"] as? [String: String] {
+            print("📋 Details:")
+            for (key, value) in details {
+                print("   \(key): \(value)")
+            }
+        }
+        
+        print("---")
+    }
+    
+    private func logToFile(_ logEntry: [String: Any]) {
+        // Create log directory if it doesn't exist
+        let logDir = "/tmp/mac-system-monitor-test"
+        let logFile = "\(logDir)/enhanced-test.log"
+        
+        do {
+            if !FileManager.default.fileExists(atPath: logDir) {
+                try FileManager.default.createDirectory(atPath: logDir, withIntermediateDirectories: true)
+            }
+            
+            let logData = try JSONSerialization.data(withJSONObject: logEntry, options: .prettyPrinted)
+            let logString = String(data: logData, encoding: .utf8)! + "\n---\n"
+            
+            if let fileHandle = FileHandle(forWritingAtPath: logFile) {
+                fileHandle.seekToEndOfFile()
+                fileHandle.write(logString.data(using: .utf8)!)
+                fileHandle.closeFile()
+            } else {
+                try logString.write(toFile: logFile, atomically: true, encoding: .utf8)
+            }
+        } catch {
+            print("Failed to write to log file: \(error)")
         }
     }
     
@@ -551,32 +855,285 @@ struct SettingsTestView: View {
 
 struct TestEventRow: View {
     let event: TestEvent
+    @State private var showDetails = false
     
     var body: some View {
-        HStack {
-            Image(systemName: event.severity.icon)
-                .foregroundColor(event.severity.color)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(event.description)
-                    .font(.caption)
-                    .fontWeight(.medium)
+        VStack(alignment: .leading, spacing: 8) {
+            // Main event row
+            HStack {
+                Image(systemName: event.severity.icon)
+                    .foregroundColor(event.severity.color)
                 
-                Text(event.timestamp, style: .time)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(event.description)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                    
+                    Text(event.timestamp, style: .time)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Text(event.type.rawValue)
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(event.type.color.opacity(0.2))
+                    .cornerRadius(4)
+                
+                Button(action: {
+                    showDetails.toggle()
+                }) {
+                    Image(systemName: showDetails ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
+            .padding(.vertical, 4)
+            
+            // Enhanced log details (expandable)
+            if showDetails {
+                VStack(alignment: .leading, spacing: 6) {
+                    Divider()
+                    
+                    // Device Information
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Device Information")
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                        
+                        DeviceInfoRow(icon: "number", label: "Serial Number", value: getDeviceSerialNumber())
+                        DeviceInfoRow(icon: "network", label: "MAC Address", value: getDeviceMacAddress())
+                        DeviceInfoRow(icon: "cpu", label: "Hardware UUID", value: getDeviceHardwareUUID())
+                        DeviceInfoRow(icon: "desktopcomputer", label: "Model", value: getDeviceModel())
+                        DeviceInfoRow(icon: "memorychip", label: "Processor", value: getDeviceProcessor())
+                        DeviceInfoRow(icon: "memorychip", label: "Memory", value: getDeviceMemory())
+                        DeviceInfoRow(icon: "externaldrive", label: "Disk", value: getDeviceDisk())
+                    }
+                    
+                    Divider()
+                    
+                    // Event Details
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Event Details")
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(.orange)
+                        
+                        ForEach(Array(event.details.keys.sorted()), id: \.self) { key in
+                            if let value = event.details[key] {
+                                DeviceInfoRow(icon: "info.circle", label: key, value: value)
+                            }
+                        }
+                    }
+                }
+                .padding(.leading, 20)
+                .padding(.vertical, 8)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(6)
+            }
+        }
+    }
+    
+    // Device information getters
+    private func getDeviceSerialNumber() -> String {
+        let task = Process()
+        task.launchPath = "/usr/sbin/system_profiler"
+        task.arguments = ["SPHardwareDataType"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if let range = output.range(of: "Serial Number: "),
+               let endRange = output[range.upperBound...].firstIndex(of: "\n") {
+                return String(output[range.upperBound..<endRange]).trimmingCharacters(in: .whitespaces)
+            }
+        } catch {
+            return "Unknown"
+        }
+        
+        return "Unknown"
+    }
+    
+    private func getDeviceMacAddress() -> String {
+        let task = Process()
+        task.launchPath = "/sbin/ifconfig"
+        task.arguments = ["en0"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if let range = output.range(of: "ether "),
+               let endRange = output[range.upperBound...].firstIndex(of: " ") {
+                return String(output[range.upperBound..<endRange]).trimmingCharacters(in: .whitespaces)
+            }
+        } catch {
+            return "Unknown"
+        }
+        
+        return "Unknown"
+    }
+    
+    private func getDeviceHardwareUUID() -> String {
+        let task = Process()
+        task.launchPath = "/usr/sbin/system_profiler"
+        task.arguments = ["SPHardwareDataType"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if let range = output.range(of: "Hardware UUID: "),
+               let endRange = output[range.upperBound...].firstIndex(of: "\n") {
+                return String(output[range.upperBound..<endRange]).trimmingCharacters(in: .whitespaces)
+            }
+        } catch {
+            return "Unknown"
+        }
+        
+        return "Unknown"
+    }
+    
+    private func getDeviceModel() -> String {
+        let task = Process()
+        task.launchPath = "/usr/sbin/system_profiler"
+        task.arguments = ["SPHardwareDataType"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if let range = output.range(of: "Model Identifier: "),
+               let endRange = output[range.upperBound...].firstIndex(of: "\n") {
+                return String(output[range.upperBound..<endRange]).trimmingCharacters(in: .whitespaces)
+            }
+        } catch {
+            return "Unknown"
+        }
+        
+        return "Unknown"
+    }
+    
+    private func getDeviceProcessor() -> String {
+        let task = Process()
+        task.launchPath = "/usr/sbin/system_profiler"
+        task.arguments = ["SPHardwareDataType"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if let range = output.range(of: "Chip: "),
+               let endRange = output[range.upperBound...].firstIndex(of: "\n") {
+                return String(output[range.upperBound..<endRange]).trimmingCharacters(in: .whitespaces)
+            }
+        } catch {
+            return "Unknown"
+        }
+        
+        return "Unknown"
+    }
+    
+    private func getDeviceMemory() -> String {
+        let task = Process()
+        task.launchPath = "/usr/sbin/system_profiler"
+        task.arguments = ["SPHardwareDataType"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            if let range = output.range(of: "Memory: "),
+               let endRange = output[range.upperBound...].firstIndex(of: "\n") {
+                return String(output[range.upperBound..<endRange]).trimmingCharacters(in: .whitespaces)
+            }
+        } catch {
+            return "Unknown"
+        }
+        
+        return "Unknown"
+    }
+    
+    private func getDeviceDisk() -> String {
+        let task = Process()
+        task.launchPath = "/bin/df"
+        task.arguments = ["-h", "/"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            
+            let lines = output.components(separatedBy: "\n")
+            if lines.count > 1 {
+                let parts = lines[1].components(separatedBy: " ")
+                if parts.count > 1 {
+                    return parts[1]
+                }
+            }
+        } catch {
+            return "Unknown"
+        }
+        
+        return "Unknown"
+    }
+}
+
+struct DeviceInfoRow: View {
+    let icon: String
+    let label: String
+    let value: String
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .frame(width: 12)
+            
+            Text(label)
+                .font(.caption2)
+                .foregroundColor(.secondary)
             
             Spacer()
             
-            Text(event.type.rawValue)
+            Text(value)
                 .font(.caption2)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(event.type.color.opacity(0.2))
-                .cornerRadius(4)
+                .fontWeight(.medium)
+                .lineLimit(1)
         }
-        .padding(.vertical, 4)
     }
 }
 

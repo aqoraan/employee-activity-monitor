@@ -1,0 +1,99 @@
+<Window x:Class="SystemMonitor.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Employee Activity Monitor" Height="700" Width="1000"
+        WindowStartupLocation="CenterScreen" Background="#F5F5F5">
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#2C3E50" Padding="20">
+            <StackPanel>
+                <TextBlock Text="Employee Activity Monitor" 
+                           FontSize="24" FontWeight="Bold" 
+                           Foreground="White" HorizontalAlignment="Center"/>
+                <TextBlock Text="Real-time monitoring of employee activities" 
+                           FontSize="14" Foreground="#BDC3C7" 
+                           HorizontalAlignment="Center" Margin="0,5,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" Margin="20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Panel - Monitoring Status -->
+            <Border Grid.Column="0" Background="White" CornerRadius="8" 
+                    Margin="0,0,10,0" Padding="20" Effect="{DynamicResource MaterialDesignElevationShadow2}">
+                <StackPanel>
+                    <TextBlock Text="Monitoring Status" FontSize="18" FontWeight="Bold" 
+                               Margin="0,0,0,20" Foreground="#2C3E50"/>
+                    
+                    <!-- Status Indicators -->
+                    <StackPanel Margin="0,0,0,20">
+                        <TextBlock Text="USB Drive Monitoring:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <Ellipse x:Name="UsbStatus" Width="12" Height="12" Fill="Red" Margin="0,0,0,10"/>
+                        
+                        <TextBlock Text="File Transfer Monitoring:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <Ellipse x:Name="FileTransferStatus" Width="12" Height="12" Fill="Red" Margin="0,0,0,10"/>
+                        
+                        <TextBlock Text="Application Installation:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <Ellipse x:Name="AppInstallStatus" Width="12" Height="12" Fill="Red" Margin="0,0,0,10"/>
+                        
+                        <TextBlock Text="Network Activity:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <Ellipse x:Name="NetworkStatus" Width="12" Height="12" Fill="Red" Margin="0,0,0,10"/>
+                    </StackPanel>
+
+                    <!-- Control Buttons -->
+                    <StackPanel>
+                        <Button x:Name="StartMonitoringBtn" Content="Start Monitoring" 
+                                Background="#27AE60" Foreground="White" Padding="15,8" 
+                                Margin="0,0,0,10" Click="StartMonitoring_Click"/>
+                        <Button x:Name="StopMonitoringBtn" Content="Stop Monitoring" 
+                                Background="#E74C3C" Foreground="White" Padding="15,8" 
+                                Margin="0,0,0,10" Click="StopMonitoring_Click" IsEnabled="False"/>
+                        <Button x:Name="TestN8nBtn" Content="Test N8N Connection" 
+                                Background="#3498DB" Foreground="White" Padding="15,8" 
+                                Click="TestN8n_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Right Panel - Activity Log -->
+            <Border Grid.Column="1" Background="White" CornerRadius="8" 
+                    Margin="10,0,0,0" Padding="20" Effect="{DynamicResource MaterialDesignElevationShadow2}">
+                <StackPanel>
+                    <TextBlock Text="Activity Log" FontSize="18" FontWeight="Bold" 
+                               Margin="0,0,0,20" Foreground="#2C3E50"/>
+                    
+                    <ScrollViewer Height="400" VerticalScrollBarVisibility="Auto">
+                        <TextBox x:Name="ActivityLog" IsReadOnly="True" 
+                                 FontFamily="Consolas" FontSize="11" 
+                                 Background="#F8F9FA" BorderThickness="0"/>
+                    </ScrollViewer>
+                    
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Clear Log" Background="#95A5A6" Foreground="White" 
+                                Padding="10,5" Margin="0,0,10,0" Click="ClearLog_Click"/>
+                        <Button Content="Export Log" Background="#9B59B6" Foreground="White" 
+                                Padding="10,5" Click="ExportLog_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" Background="#34495E" Padding="10">
+            <TextBlock x:Name="StatusText" Text="Ready to start monitoring..." 
+                       Foreground="White" HorizontalAlignment="Center"/>
+        </Border>
+    </Grid>
+</Window> 

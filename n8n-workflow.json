@@ -1,10 +1,10 @@
 {
-  "name": "Employee Activity Monitor",
+  "name": "Mac System Monitor - Security Alerts",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "monitoring",
+        "path": "webhook/monitoring",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -17,11 +17,30 @@
     },
     {
       "parameters": {
-        "jsCode": "// Parse the incoming webhook data\nconst data = $input.first().json;\n\n// Extract relevant information\nconst activity = {\n  timestamp: data.timestamp,\n  type: data.type || data.eventType,\n  description: data.description,\n  severity: data.severity,\n  computer: data.computer,\n  user: data.user,\n  details: data.details || {},\n  deviceInfo: data.deviceInfo || {},\n  uninstallDetails: data.uninstallDetails || {}\n};\n\n// Determine email subject based on severity\nlet subject = `[${activity.severity.toUpperCase()}] `;\n\nswitch(activity.type) {\n  case 'UsbDrive':\n    subject += 'USB Drive Activity Detected';\n    break;\n  case 'UsbBlocked':\n    subject += 'USB DEVICE BLOCKED';\n    break;\n  case 'UninstallDetected':\n    subject += 'SOFTWARE UNINSTALLATION DETECTED';\n    break;\n  case 'FileTransfer':\n    subject += 'File Transfer Activity Detected';\n    break;\n  case 'AppInstallation':\n    subject += 'Application Installation Detected';\n    break;\n  case 'BlacklistedApp':\n    subject += 'BLACKLISTED APPLICATION DETECTED';\n    break;\n  case 'NetworkActivity':\n    subject += 'Suspicious Network Activity Detected';\n    break;\n  default:\n    subject += 'System Activity Detected';\n}\n\n// Create email body\nlet body = `Employee Activity Alert\\n\\n`;\nbody += `Time: ${activity.timestamp}\\n`;\nbody += `Computer: ${activity.computer}\\n`;\nbody += `User: ${activity.user}\\n`;\nbody += `Activity Type: ${activity.type}\\n`;\nbody += `Severity: ${activity.severity}\\n`;\nbody += `Description: ${activity.description || 'No description provided'}\\n\\n`;\n\n// Add device information for uninstall events\nif (activity.type === 'UninstallDetected' && activity.deviceInfo) {\n  body += '🔍 DEVICE INFORMATION 🔍\\n';\n  body += `Serial Number: ${activity.deviceInfo.serialNumber || 'Unknown'}\\n`;\n  body += `Primary MAC Address: ${activity.deviceInfo.primaryMacAddress || 'Unknown'}\\n`;\n  body += `BIOS Serial Number: ${activity.deviceInfo.biosSerialNumber || 'Unknown'}\\n`;\n  body += `Motherboard Serial Number: ${activity.deviceInfo.motherboardSerialNumber || 'Unknown'}\\n`;\n  body += `Windows Product ID: ${activity.deviceInfo.windowsProductId || 'Unknown'}\\n`;\n  body += `Installation Path: ${activity.deviceInfo.installationPath || 'Unknown'}\\n`;\n  body += `Device Fingerprint: ${activity.deviceInfo.deviceFingerprint || 'Unknown'}\\n\\n`;\n  \n  if (activity.deviceInfo.allMacAddresses && activity.deviceInfo.allMacAddresses.length > 0) {\n    body += 'All MAC Addresses:\\n';\n    activity.deviceInfo.allMacAddresses.forEach((mac, index) => {\n      body += `  ${index + 1}. ${mac}\\n`;\n    });\n    body += '\\n';\n  }\n}\n\n// Add uninstall details\nif (activity.type === 'UninstallDetected' && activity.uninstallDetails) {\n  body += '🗑️ UNINSTALL DETAILS 🗑️\\n';\n  body += `Process ID: ${activity.uninstallDetails.processId || 'Unknown'}\\n`;\n  body += `Process Name: ${activity.uninstallDetails.processName || 'Unknown'}\\n`;\n  body += `Command Line: ${activity.uninstallDetails.commandLine || 'Unknown'}\\n`;\n  body += `Uninstall Time: ${activity.uninstallDetails.uninstallTime || 'Unknown'}\\n\\n`;\n}\n\n// Add details if available\nif (Object.keys(activity.details).length > 0) {\n  body += 'Details:\\n';\n  for (const [key, value] of Object.entries(activity.details)) {\n    body += `  ${key}: ${value}\\n`;\n  }\n  body += '\\n';\n}\n\n// Special handling for different event types\nif (activity.type === 'UsbBlocked') {\n  body += '⚠️ SECURITY ALERT ⚠️\\n';\n  body += 'An unauthorized USB device was blocked from connecting to the computer.\\n';\n  body += 'This device was not found in the approved whitelist.\\n\\n';\n  body += 'Immediate action may be required to investigate this security incident.\\n';\n}\n\nif (activity.type === 'UninstallDetected') {\n  body += '🚨 CRITICAL SECURITY ALERT 🚨\\n';\n  body += 'The Employee Activity Monitor software has been uninstalled from this computer.\\n';\n  body += 'This may indicate unauthorized removal of security monitoring software.\\n\\n';\n  body += 'IMMEDIATE ACTION REQUIRED:\\n';\n  body += '1. Verify if this uninstallation was authorized\\n';\n  body += '2. Investigate who performed the uninstallation\\n';\n  body += '3. Reinstall the monitoring software if unauthorized\\n';\n  body += '4. Review security logs for suspicious activity\\n\\n';\n  body += 'Device identification information has been captured for investigation.\\n';\n}\n\nreturn {\n  subject: subject,\n  body: body,\n  severity: activity.severity,\n  type: activity.type,\n  computer: activity.computer,\n  user: activity.user,\n  deviceInfo: activity.deviceInfo,\n  uninstallDetails: activity.uninstallDetails\n};"
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "severity-check",
+              "leftValue": "={{ $json.severity }}",
+              "rightValue": "High",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
       },
-      "id": "process-data",
-      "name": "Process Data",
-      "type": "n8n-nodes-base.code",
+      "id": "high-severity-filter",
+      "name": "High Severity Filter",
+      "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [460, 300]
     },
@@ -35,34 +54,36 @@
           },
           "conditions": [
             {
-              "id": "severity-high",
-              "leftValue": "={{ $json.severity }}",
-              "rightValue": "High",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            },
-            {
-              "id": "severity-critical",
-              "leftValue": "={{ $json.severity }}",
-              "rightValue": "Critical",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            },
-            {
-              "id": "usb-blocked",
+              "id": "usb-blocked-check",
               "leftValue": "={{ $json.type }}",
               "rightValue": "UsbBlocked",
               "operator": {
                 "type": "string",
                 "operation": "equals"
               }
-            },
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "usb-blocked-filter",
+      "name": "USB Blocked Filter",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "id": "uninstall-detected",
+              "id": "uninstall-check",
               "leftValue": "={{ $json.type }}",
               "rightValue": "UninstallDetected",
               "operator": {
@@ -75,53 +96,106 @@
         },
         "options": {}
       },
-      "id": "check-severity",
-      "name": "Check Severity",
+      "id": "uninstall-filter",
+      "name": "Uninstall Filter",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [680, 300]
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Enhanced logging with device information\nconst event = $input.first().json;\n\n// Extract device information\nconst deviceInfo = event.deviceInfo || {};\nconst uninstallDetails = event.uninstallDetails || {};\n\n// Create detailed log entry\nconst logEntry = {\n  timestamp: event.timestamp,\n  eventType: event.type,\n  severity: event.severity,\n  description: event.description,\n  computer: event.computer,\n  user: event.user,\n  \n  // Device Information\n  deviceInfo: {\n    serialNumber: deviceInfo.serialNumber || 'Unknown',\n    primaryMacAddress: deviceInfo.primaryMacAddress || 'Unknown',\n    allMacAddresses: deviceInfo.allMacAddresses || [],\n    biosSerialNumber: deviceInfo.biosSerialNumber || 'Unknown',\n    motherboardSerialNumber: deviceInfo.motherboardSerialNumber || 'Unknown',\n    hardwareUUID: deviceInfo.hardwareUUID || 'Unknown',\n    modelIdentifier: deviceInfo.modelIdentifier || 'Unknown',\n    processorInfo: deviceInfo.processorInfo || 'Unknown',\n    memoryInfo: deviceInfo.memoryInfo || 'Unknown',\n    diskInfo: deviceInfo.diskInfo || 'Unknown',\n    installationPath: deviceInfo.installationPath || 'Unknown',\n    deviceFingerprint: deviceInfo.deviceFingerprint || 'Unknown'\n  },\n  \n  // Event Details\n  details: event.details || {},\n  \n  // Uninstall Details (if applicable)\n  uninstallDetails: event.type === 'UninstallDetected' ? {\n    processId: uninstallDetails.processId || 'Unknown',\n    processName: uninstallDetails.processName || 'Unknown',\n    commandLine: uninstallDetails.commandLine || 'Unknown',\n    uninstallTime: uninstallDetails.uninstallTime || 'Unknown'\n  } : null,\n  \n  // File Transfer Details (if applicable)\n  fileTransferDetails: event.type === 'FileTransfer' ? {\n    fileName: event.details?.FilePath?.split('/').pop() || 'Unknown',\n    filePath: event.details?.FilePath || 'Unknown',\n    eventType: event.details?.EventType || 'Unknown',\n    directory: event.details?.Directory || 'Unknown'\n  } : null,\n  \n  // USB Device Details (if applicable)\n  usbDeviceDetails: (event.type === 'UsbDrive' || event.type === 'UsbBlocked') ? {\n    deviceId: event.details?.DeviceID || 'Unknown',\n    deviceName: event.details?.DeviceName || 'Unknown',\n    vendorId: event.details?.VendorID || 'Unknown',\n    productId: event.details?.ProductID || 'Unknown',\n    blocked: event.type === 'UsbBlocked',\n    reason: event.details?.Reason || 'Unknown'\n  } : null\n};\n\n// Add to log file\nconst fs = require('fs');\nconst logPath = '/var/log/mac-system-monitor.log';\nconst logEntryString = JSON.stringify(logEntry, null, 2) + '\\n---\\n';\n\ntry {\n  fs.appendFileSync(logPath, logEntryString);\n} catch (error) {\n  console.error('Failed to write to log file:', error);\n}\n\nreturn logEntry;"
+      },
+      "id": "enhanced-logging",
+      "name": "Enhanced Logging",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 500]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Create detailed email content\nconst event = $input.first().json;\nconst deviceInfo = event.deviceInfo || {};\nconst uninstallDetails = event.uninstallDetails || {};\nconst fileTransferDetails = event.fileTransferDetails || {};\nconst usbDeviceDetails = event.usbDeviceDetails || {};\n\n// Determine email subject based on event type\nlet subject = '';\nlet priority = 'normal';\n\nswitch (event.eventType) {\n  case 'UsbBlocked':\n    subject = '🚨 CRITICAL: Unauthorized USB Device Blocked';\n    priority = 'high';\n    break;\n  case 'UninstallDetected':\n    subject = '🚨 CRITICAL: System Monitor Uninstallation Detected';\n    priority = 'high';\n    break;\n  case 'BlacklistedApp':\n    subject = '⚠️ WARNING: Blacklisted Application Detected';\n    priority = 'high';\n    break;\n  case 'NetworkActivity':\n    subject = '⚠️ WARNING: Suspicious Network Activity Detected';\n    priority = 'medium';\n    break;\n  case 'FileTransfer':\n    subject = '📁 INFO: File Transfer Activity Detected';\n    priority = 'medium';\n    break;\n  case 'UsbDrive':\n    subject = '💾 INFO: USB Device Connected';\n    priority = 'low';\n    break;\n  case 'AppInstallation':\n    subject = '📱 INFO: Application Installation Detected';\n    priority = 'low';\n    break;\n  default:\n    subject = 'ℹ️ INFO: System Activity Detected';\n    priority = 'low';\n}\n\n// Create detailed email body\nlet emailBody = `\n🔍 SECURITY ALERT - MAC SYSTEM MONITOR\n=====================================\n\n📅 EVENT DETAILS\n---------------\n• Time: ${event.timestamp}\n• Type: ${event.eventType}\n• Severity: ${event.severity}\n• Description: ${event.description}\n• Computer: ${event.computer}\n• User: ${event.user}\n\n🖥️ DEVICE INFORMATION\n--------------------\n• Serial Number: ${deviceInfo.serialNumber}\n• Primary MAC Address: ${deviceInfo.primaryMacAddress}\n• All MAC Addresses: ${deviceInfo.allMacAddresses?.join(', ') || 'None'}\n• BIOS Serial: ${deviceInfo.biosSerialNumber}\n• Motherboard Serial: ${deviceInfo.motherboardSerialNumber}\n• Hardware UUID: ${deviceInfo.hardwareUUID}\n• Model: ${deviceInfo.modelIdentifier}\n• Processor: ${deviceInfo.processorInfo}\n• Memory: ${deviceInfo.memoryInfo}\n• Disk: ${deviceInfo.diskInfo}\n• Installation Path: ${deviceInfo.installationPath}\n• Device Fingerprint: ${deviceInfo.deviceFingerprint}\n`;\n\n// Add event-specific details\nif (event.eventType === 'UninstallDetected' && uninstallDetails) {\n  emailBody += `\n🗑️ UNINSTALL DETAILS\n------------------\n• Process ID: ${uninstallDetails.processId}\n• Process Name: ${uninstallDetails.processName}\n• Command Line: ${uninstallDetails.commandLine}\n• Uninstall Time: ${uninstallDetails.uninstallTime}\n`;\n}\n\nif (event.eventType === 'FileTransfer' && fileTransferDetails) {\n  emailBody += `\n📁 FILE TRANSFER DETAILS\n----------------------\n• File Name: ${fileTransferDetails.fileName}\n• File Path: ${fileTransferDetails.filePath}\n• Event Type: ${fileTransferDetails.eventType}\n• Directory: ${fileTransferDetails.directory}\n`;\n}\n\nif ((event.eventType === 'UsbDrive' || event.eventType === 'UsbBlocked') && usbDeviceDetails) {\n  emailBody += `\n💾 USB DEVICE DETAILS\n-------------------\n• Device ID: ${usbDeviceDetails.deviceId}\n• Device Name: ${usbDeviceDetails.deviceName}\n• Vendor ID: ${usbDeviceDetails.vendorId}\n• Product ID: ${usbDeviceDetails.productId}\n• Blocked: ${usbDeviceDetails.blocked ? 'YES' : 'NO'}\n• Reason: ${usbDeviceDetails.reason}\n`;\n}\n\n// Add action recommendations\nemailBody += `\n🎯 RECOMMENDED ACTIONS\n-------------------\n`;\n\nswitch (event.eventType) {\n  case 'UsbBlocked':\n    emailBody += `• Investigate unauthorized USB device attempt\n• Review USB whitelist configuration\n• Check for potential security breach\n• Update device whitelist if needed\n`;\n    break;\n  case 'UninstallDetected':\n    emailBody += `• IMMEDIATE ACTION REQUIRED\n• Verify if uninstallation was authorized\n• Investigate who performed the uninstallation\n• Reinstall monitoring software if unauthorized\n• Review security logs for suspicious activity\n`;\n    break;\n  case 'BlacklistedApp':\n    emailBody += `• Investigate blacklisted application\n• Check if installation was authorized\n• Remove unauthorized application\n• Review application installation policies\n`;\n    break;\n  case 'NetworkActivity':\n    emailBody += `• Investigate suspicious network connection\n• Check if connection was authorized\n• Review network security policies\n• Monitor for additional suspicious activity\n`;\n    break;\n  case 'FileTransfer':\n    emailBody += `• Review file transfer activity\n• Verify if transfer was authorized\n• Check file content for sensitive data\n• Monitor for additional file transfers\n`;\n    break;\n  default:\n    emailBody += `• Review event details\n• Monitor for related activities\n• Update security policies if needed\n`;\n}\n\nemailBody += `\n📊 EVENT STATISTICS\n-----------------\n• Total Events Today: [Calculated from logs]\n• High Severity Events: [Calculated from logs]\n• USB Blocking Events: [Calculated from logs]\n• File Transfer Events: [Calculated from logs]\n\n---\nThis alert was generated automatically by the Mac System Monitor.\nFor support, contact your system administrator.\n`;\n\nreturn {\n  subject: subject,\n  body: emailBody,\n  priority: priority,\n  event: event\n};"
+      },
+      "id": "create-email-content",
+      "name": "Create Email Content",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 700]
     },
     {
       "parameters": {
         "fromEmail": "security@yourcompany.com",
         "toEmail": "admin@yourcompany.com",
         "subject": "={{ $json.subject }}",
-        "emailType": "html",
-        "message": "={{ $json.body }}",
-        "options": {}
+        "text": "={{ $json.body }}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
       },
       "id": "send-email",
       "name": "Send Email",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 1,
-      "position": [900, 200]
+      "position": [900, 700],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-credentials",
+          "name": "SMTP Credentials"
+        }
+      }
     },
     {
       "parameters": {
-        "fromEmail": "security@yourcompany.com",
-        "toEmail": "admin@yourcompany.com",
-        "subject": "={{ $json.subject }}",
-        "emailType": "html",
-        "message": "={{ $json.body }}",
-        "options": {}
+        "functionCode": "// Create Slack notification\nconst event = $input.first().json;\nconst emailContent = $('Create Email Content').first().json;\n\n// Determine Slack channel based on severity\nlet channel = '#general';\nif (event.severity === 'Critical' || event.severity === 'High') {\n  channel = '#security-alerts';\n} else if (event.severity === 'Medium') {\n  channel = '#monitoring';\n}\n\n// Create Slack message\nconst slackMessage = {\n  channel: channel,\n  text: `*${emailContent.subject}*\\n${emailContent.body.split('\\n').slice(0, 10).join('\\n')}...`,\n  attachments: [\n    {\n      color: event.severity === 'Critical' ? 'danger' : event.severity === 'High' ? 'warning' : 'good',\n      fields: [\n        {\n          title: 'Computer',\n          value: event.computer,\n          short: true\n        },\n        {\n          title: 'User',\n          value: event.user,\n          short: true\n        },\n        {\n          title: 'Serial Number',\n          value: event.deviceInfo?.serialNumber || 'Unknown',\n          short: true\n        },\n        {\n          title: 'MAC Address',\n          value: event.deviceInfo?.primaryMacAddress || 'Unknown',\n          short: true\n        }\n      ]\n    }\n  ]\n};\n\nreturn slackMessage;"
       },
-      "id": "send-urgent-email",
-      "name": "Send Urgent Email",
-      "type": "n8n-nodes-base.emailSend",
+      "id": "create-slack-notification",
+      "name": "Create Slack Notification",
+      "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [900, 400]
+      "position": [900, 500]
+    },
+    {
+      "parameters": {
+        "channel": "={{ $json.channel }}",
+        "text": "={{ $json.text }}",
+        "attachments": "={{ $json.attachments }}",
+        "otherOptions": {
+          "username": "Mac System Monitor",
+          "icon_emoji": ":shield:"
+        }
+      },
+      "id": "send-slack",
+      "name": "Send Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [1120, 500],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Store event in database\nconst event = $input.first().json;\n\n// This would typically connect to a database\n// For now, we'll create a structured log entry\nconst dbEntry = {\n  id: Date.now().toString(),\n  timestamp: event.timestamp,\n  eventType: event.eventType,\n  severity: event.severity,\n  computer: event.computer,\n  user: event.user,\n  deviceInfo: event.deviceInfo,\n  details: event.details,\n  uninstallDetails: event.uninstallDetails,\n  fileTransferDetails: event.fileTransferDetails,\n  usbDeviceDetails: event.usbDeviceDetails,\n  processed: true,\n  processedAt: new Date().toISOString()\n};\n\n// In a real implementation, this would save to a database\nconsole.log('Database entry:', JSON.stringify(dbEntry, null, 2));\n\nreturn dbEntry;"
+      },
+      "id": "store-event",
+      "name": "Store Event",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 700]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Activity processed successfully\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}",
-        "options": {}
+        "responseBody": "{\n  \"status\": \"success\",\n  \"message\": \"Event processed successfully\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\",\n  \"eventType\": \"{{ $json.eventType }}\",\n  \"severity\": \"{{ $json.severity }}\"\n}"
       },
       "id": "response",
       "name": "Response",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1120, 300]
+      "position": [1340, 700]
     }
   ],
   "connections": {
@@ -129,36 +203,77 @@
       "main": [
         [
           {
-            "node": "Process Data",
+            "node": "High Severity Filter",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enhanced Logging",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Process Data": {
+    "High Severity Filter": {
       "main": [
         [
           {
-            "node": "Check Severity",
+            "node": "USB Blocked Filter",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Uninstall Filter",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check Severity": {
+    "USB Blocked Filter": {
+      "main": [
+        [
+          {
+            "node": "Create Email Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uninstall Filter": {
+      "main": [
+        [
+          {
+            "node": "Create Email Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enhanced Logging": {
+      "main": [
+        [
+          {
+            "node": "Create Email Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Email Content": {
       "main": [
         [
           {
             "node": "Send Email",
             "type": "main",
             "index": 0
-          }
-        ],
-        [
+          },
           {
-            "node": "Send Urgent Email",
+            "node": "Create Slack Notification",
             "type": "main",
             "index": 0
           }
@@ -169,14 +284,25 @@
       "main": [
         [
           {
-            "node": "Response",
+            "node": "Store Event",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Urgent Email": {
+    "Create Slack Notification": {
+      "main": [
+        [
+          {
+            "node": "Send Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Event": {
       "main": [
         [
           {
@@ -192,5 +318,17 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "1"
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "mac-system-monitor-workflow",
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "security-monitoring",
+      "name": "Security Monitoring"
+    }
+  ]
 } 

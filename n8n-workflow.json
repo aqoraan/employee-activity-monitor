@@ -17,12 +17,12 @@
     },
     {
       "parameters": {
-        "jsCode": "// Parse the incoming webhook data\nconst data = $input.first().json;\n\n// Extract relevant information\nconst activity = {\n  timestamp: data.timestamp,\n  type: data.type,\n  description: data.description,\n  severity: data.severity,\n  computer: data.computer,\n  user: data.user,\n  details: data.details || {}\n};\n\n// Determine email subject based on severity\nlet subject = `[${activity.severity.toUpperCase()}] `;\n\nswitch(activity.type) {\n  case 'UsbDrive':\n    subject += 'USB Drive Activity Detected';\n    break;\n  case 'FileTransfer':\n    subject += 'File Transfer Activity Detected';\n    break;\n  case 'AppInstallation':\n    subject += 'Application Installation Detected';\n    break;\n  case 'BlacklistedApp':\n    subject += 'BLACKLISTED APPLICATION DETECTED';\n    break;\n  case 'NetworkActivity':\n    subject += 'Suspicious Network Activity Detected';\n    break;\n  default:\n    subject += 'System Activity Detected';\n}\n\n// Create email body\nlet body = `Employee Activity Alert\\n\\n`;\nbody += `Time: ${activity.timestamp}\\n`;\nbody += `Computer: ${activity.computer}\\n`;\nbody += `User: ${activity.user}\\n`;\nbody += `Activity Type: ${activity.type}\\n`;\nbody += `Severity: ${activity.severity}\\n`;\nbody += `Description: ${activity.description}\\n\\n`;\n\n// Add details if available\nif (Object.keys(activity.details).length > 0) {\n  body += 'Details:\\n';\n  for (const [key, value] of Object.entries(activity.details)) {\n    body += `  ${key}: ${value}\\n`;\n  }\n}\n\nreturn {\n  subject: subject,\n  body: body,\n  severity: activity.severity,\n  type: activity.type,\n  computer: activity.computer,\n  user: activity.user\n};"
+        "jsCode": "// Parse the incoming webhook data\nconst data = $input.first().json;\n\n// Extract relevant information\nconst activity = {\n  timestamp: data.timestamp,\n  type: data.type,\n  description: data.description,\n  severity: data.severity,\n  computer: data.computer,\n  user: data.user,\n  details: data.details || {}\n};\n\n// Determine email subject based on severity\nlet subject = `[${activity.severity.toUpperCase()}] `;\n\nswitch(activity.type) {\n  case 'UsbDrive':\n    subject += 'USB Drive Activity Detected';\n    break;\n  case 'UsbBlocked':\n    subject += 'USB DEVICE BLOCKED';\n    break;\n  case 'FileTransfer':\n    subject += 'File Transfer Activity Detected';\n    break;\n  case 'AppInstallation':\n    subject += 'Application Installation Detected';\n    break;\n  case 'BlacklistedApp':\n    subject += 'BLACKLISTED APPLICATION DETECTED';\n    break;\n  case 'NetworkActivity':\n    subject += 'Suspicious Network Activity Detected';\n    break;\n  default:\n    subject += 'System Activity Detected';\n}\n\n// Create email body\nlet body = `Employee Activity Alert\\n\\n`;\nbody += `Time: ${activity.timestamp}\\n`;\nbody += `Computer: ${activity.computer}\\n`;\nbody += `User: ${activity.user}\\n`;\nbody += `Activity Type: ${activity.type}\\n`;\nbody += `Severity: ${activity.severity}\\n`;\nbody += `Description: ${activity.description}\\n\\n`;\n\n// Add details if available\nif (Object.keys(activity.details).length > 0) {\n  body += 'Details:\\n';\n  for (const [key, value] of Object.entries(activity.details)) {\n    body += `  ${key}: ${value}\\n`;\n  }\n}\n\n// Special handling for USB blocking events\nif (activity.type === 'UsbBlocked') {\n  body += '\\n⚠️ SECURITY ALERT ⚠️\\n';\n  body += 'An unauthorized USB device was blocked from connecting to the computer.\\n';\n  body += 'This device was not found in the approved whitelist.\\n\\n';\n  body += 'Immediate action may be required to investigate this security incident.\\n';\n}\n\nreturn {\n  subject: subject,\n  body: body,\n  severity: activity.severity,\n  type: activity.type,\n  computer: activity.computer,\n  user: activity.user\n};"
       },
       "id": "process-data",
-      "name": "Process Activity Data",
+      "name": "Process Data",
       "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "typeVersion": 1,
       "position": [460, 300]
     },
     {
@@ -35,21 +35,39 @@
           },
           "conditions": [
             {
-              "id": "severity-check",
+              "id": "severity-high",
               "leftValue": "={{ $json.severity }}",
               "rightValue": "High",
               "operator": {
                 "type": "string",
                 "operation": "equals"
               }
+            },
+            {
+              "id": "severity-critical",
+              "leftValue": "={{ $json.severity }}",
+              "rightValue": "Critical",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "usb-blocked",
+              "leftValue": "={{ $json.type }}",
+              "rightValue": "UsbBlocked",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
           ],
-          "combinator": "and"
+          "combinator": "or"
         },
         "options": {}
       },
-      "id": "severity-filter",
-      "name": "High Severity Filter",
+      "id": "check-severity",
+      "name": "Check Severity",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [680, 300]
@@ -59,37 +77,39 @@
         "fromEmail": "security@yourcompany.com",
         "toEmail": "admin@yourcompany.com",
         "subject": "={{ $json.subject }}",
-        "text": "={{ $json.body }}",
+        "emailType": "html",
+        "message": "={{ $json.body }}",
         "options": {}
       },
       "id": "send-email",
-      "name": "Send Email Alert",
+      "name": "Send Email",
       "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2,
-      "position": [900, 300]
+      "typeVersion": 1,
+      "position": [900, 200]
     },
     {
       "parameters": {
         "fromEmail": "security@yourcompany.com",
-        "toEmail": "it-support@yourcompany.com",
+        "toEmail": "admin@yourcompany.com",
         "subject": "={{ $json.subject }}",
-        "text": "={{ $json.body }}",
+        "emailType": "html",
+        "message": "={{ $json.body }}",
         "options": {}
       },
-      "id": "send-low-severity",
-      "name": "Send Low Severity Alert",
+      "id": "send-urgent-email",
+      "name": "Send Urgent Email",
       "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2,
-      "position": [900, 500]
+      "typeVersion": 1,
+      "position": [900, 400]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "{\n  \"status\": \"success\",\n  \"message\": \"Activity logged successfully\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Activity processed successfully\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}",
         "options": {}
       },
-      "id": "webhook-response",
-      "name": "Webhook Response",
+      "id": "response",
+      "name": "Response",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [1120, 300]
@@ -100,58 +120,58 @@
       "main": [
         [
           {
-            "node": "Process Activity Data",
+            "node": "Process Data",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Process Activity Data": {
+    "Process Data": {
       "main": [
         [
           {
-            "node": "High Severity Filter",
+            "node": "Check Severity",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "High Severity Filter": {
+    "Check Severity": {
       "main": [
         [
           {
-            "node": "Send Email Alert",
+            "node": "Send Email",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Send Low Severity Alert",
+            "node": "Send Urgent Email",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Email Alert": {
+    "Send Email": {
       "main": [
         [
           {
-            "node": "Webhook Response",
+            "node": "Response",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Low Severity Alert": {
+    "Send Urgent Email": {
       "main": [
         [
           {
-            "node": "Webhook Response",
+            "node": "Response",
             "type": "main",
             "index": 0
           }
@@ -159,13 +179,9 @@
       ]
     }
   },
-  "pinData": {},
+  "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "staticData": null,
-  "tags": [],
-  "triggerCount": 1,
-  "updatedAt": "2024-01-01T00:00:00.000Z",
   "versionId": "1"
 } 

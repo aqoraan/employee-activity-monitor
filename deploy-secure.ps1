@@ -124,6 +124,19 @@ $config = @{
         protectConfiguration = $true
         logSecurityEvents = $true
     }
+    usbBlockingSettings = @{
+        enableUsbBlocking = $true
+        googleSheetsApiKey = ""
+        googleSheetsSpreadsheetId = ""
+        googleSheetsRange = "A:A"
+        cacheExpirationMinutes = 5
+        blockAllUsbStorage = $false
+        allowWhitelistedOnly = $true
+        logBlockedDevices = $true
+        sendBlockingAlerts = $true
+        localWhitelist = @()
+        localBlacklist = @()
+    }
 } | ConvertTo-Json -Depth 10
 
 $config | Out-File -FilePath $configPath -Encoding UTF8

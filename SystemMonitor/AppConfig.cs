@@ -13,6 +13,7 @@ namespace SystemMonitor
         public MonitoringSettings MonitoringSettings { get; set; } = new MonitoringSettings();
         public EmailSettings EmailSettings { get; set; } = new EmailSettings();
         public SecuritySettings SecuritySettings { get; set; } = new SecuritySettings();
+        public UsbBlockingSettings UsbBlockingSettings { get; set; } = new UsbBlockingSettings();
 
         public static AppConfig LoadFromFile(string filePath = "config.json")
         {
@@ -50,7 +51,8 @@ namespace SystemMonitor
                 SuspiciousDomains = GetDefaultSuspiciousDomains(),
                 MonitoringSettings = new MonitoringSettings(),
                 EmailSettings = new EmailSettings(),
-                SecuritySettings = new SecuritySettings()
+                SecuritySettings = new SecuritySettings(),
+                UsbBlockingSettings = new UsbBlockingSettings()
             };
         }
 
@@ -130,5 +132,20 @@ namespace SystemMonitor
         public bool RunAsService { get; set; } = true;
         public bool ProtectRegistry { get; set; } = true;
         public bool AddWindowsDefenderExclusion { get; set; } = true;
+    }
+
+    public class UsbBlockingSettings
+    {
+        public bool EnableUsbBlocking { get; set; } = true;
+        public string GoogleSheetsApiKey { get; set; } = "";
+        public string GoogleSheetsSpreadsheetId { get; set; } = "";
+        public string GoogleSheetsRange { get; set; } = "A:A";
+        public int CacheExpirationMinutes { get; set; } = 5;
+        public bool BlockAllUsbStorage { get; set; } = false;
+        public bool AllowWhitelistedOnly { get; set; } = true;
+        public bool LogBlockedDevices { get; set; } = true;
+        public bool SendBlockingAlerts { get; set; } = true;
+        public List<string> LocalWhitelist { get; set; } = new List<string>();
+        public List<string> LocalBlacklist { get; set; } = new List<string>();
     }
 } 

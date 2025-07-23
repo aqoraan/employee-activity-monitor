@@ -6,7 +6,7 @@
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyTitle>System Monitor</AssemblyTitle>
-    <AssemblyDescription>Employee Activity Monitoring System</AssemblyDescription>
+    <AssemblyDescription>Employee Activity Monitoring System with USB Blocking</AssemblyDescription>
     <AssemblyCompany>Your Company</AssemblyCompany>
     <AssemblyProduct>System Monitor</AssemblyProduct>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
@@ -23,6 +23,7 @@
     <PackageReference Include="System.Net.Http" Version="4.3.4" />
     <PackageReference Include="System.Configuration.Install" Version="4.7.0" />
     <PackageReference Include="System.Security.Principal.Windows" Version="5.0.0" />
+    <PackageReference Include="System.Text.Json" Version="7.0.4" />
   </ItemGroup>
 
   <ItemGroup>

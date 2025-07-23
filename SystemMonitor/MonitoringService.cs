@@ -19,6 +19,8 @@ namespace SystemMonitor
         private ManagementEventWatcher _processWatcher;
         private List<FileSystemWatcher> _fileWatchers;
         private bool _isMonitoring;
+        private UsbBlockingService _usbBlockingService;
+        private GoogleSheetsManager _sheetsManager;
 
         public event EventHandler<ActivityEventArgs> ActivityDetected;
 
@@ -28,6 +30,20 @@ namespace SystemMonitor
             _config = config ?? AppConfig.LoadFromFile();
             _fileWatchers = new List<FileSystemWatcher>();
             _isMonitoring = false;
+            
+            // Initialize USB blocking if enabled
+            if (_config.UsbBlockingSettings.EnableUsbBlocking && 
+                !string.IsNullOrEmpty(_config.UsbBlockingSettings.GoogleSheetsApiKey) &&
+                !string.IsNullOrEmpty(_config.UsbBlockingSettings.GoogleSheetsSpreadsheetId))
+            {
+                _sheetsManager = new GoogleSheetsManager(
+                    _config.UsbBlockingSettings.GoogleSheetsApiKey,
+                    _config.UsbBlockingSettings.GoogleSheetsSpreadsheetId,
+                    _config.UsbBlockingSettings.GoogleSheetsRange);
+                
+                _usbBlockingService = new UsbBlockingService(_sheetsManager, true);
+                _usbBlockingService.UsbBlocked += OnUsbBlocked;
+            }
         }
 
         public void StartMonitoring()
@@ -35,6 +51,12 @@ namespace SystemMonitor
             if (_isMonitoring) return;
 
             _isMonitoring = true;
+            
+            // Start USB blocking first if enabled
+            if (_usbBlockingService != null)
+            {
+                _usbBlockingService.StartBlocking();
+            }
             
             if (_config.MonitoringSettings.EnableUsbMonitoring)
                 StartUsbMonitoring();
@@ -57,12 +79,32 @@ namespace SystemMonitor
             _isMonitoring = false;
             _usbWatcher?.Stop();
             _processWatcher?.Stop();
+            _usbBlockingService?.StopBlocking();
             
             foreach (var watcher in _fileWatchers)
             {
                 watcher?.Dispose();
             }
             _fileWatchers.Clear();
+        }
+
+        private void OnUsbBlocked(object sender, UsbBlockingEventArgs e)
+        {
+            var activity = new ActivityEventArgs
+            {
+                Type = ActivityType.UsbBlocked,
+                Description = $"USB device blocked: {e.DeviceId} - {e.Reason}",
+                Timestamp = e.Timestamp,
+                Severity = ActivitySeverity.High,
+                Details = new Dictionary<string, string>
+                {
+                    ["DeviceID"] = e.DeviceId,
+                    ["Reason"] = e.Reason,
+                    ["Blocked"] = e.Blocked.ToString()
+                }
+            };
+
+            OnActivityDetected(activity);
         }
 
         private void StartUsbMonitoring()
@@ -409,6 +451,8 @@ namespace SystemMonitor
             _httpClient?.Dispose();
             _usbWatcher?.Dispose();
             _processWatcher?.Dispose();
+            _usbBlockingService?.Dispose();
+            _sheetsManager?.Dispose();
             
             foreach (var watcher in _fileWatchers)
             {
@@ -433,7 +477,8 @@ namespace SystemMonitor
         AppInstallation,
         BlacklistedApp,
         NetworkActivity,
-        System
+        System,
+        UsbBlocked
     }
 
     public enum ActivitySeverity

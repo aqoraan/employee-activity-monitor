@@ -14,6 +14,7 @@ namespace SystemMonitor
         public EmailSettings EmailSettings { get; set; } = new EmailSettings();
         public SecuritySettings SecuritySettings { get; set; } = new SecuritySettings();
         public UsbBlockingSettings UsbBlockingSettings { get; set; } = new UsbBlockingSettings();
+        public UninstallDetectionSettings UninstallDetectionSettings { get; set; } = new UninstallDetectionSettings();
 
         public static AppConfig LoadFromFile(string filePath = "config.json")
         {
@@ -52,7 +53,8 @@ namespace SystemMonitor
                 MonitoringSettings = new MonitoringSettings(),
                 EmailSettings = new EmailSettings(),
                 SecuritySettings = new SecuritySettings(),
-                UsbBlockingSettings = new UsbBlockingSettings()
+                UsbBlockingSettings = new UsbBlockingSettings(),
+                UninstallDetectionSettings = new UninstallDetectionSettings()
             };
         }
 
@@ -147,5 +149,18 @@ namespace SystemMonitor
         public bool SendBlockingAlerts { get; set; } = true;
         public List<string> LocalWhitelist { get; set; } = new List<string>();
         public List<string> LocalBlacklist { get; set; } = new List<string>();
+    }
+
+    public class UninstallDetectionSettings
+    {
+        public bool EnableUninstallDetection { get; set; } = true;
+        public bool SendUninstallNotifications { get; set; } = true;
+        public bool CaptureDeviceInfo { get; set; } = true;
+        public bool LogUninstallAttempts { get; set; } = true;
+        public bool RequireAdminForUninstall { get; set; } = true;
+        public bool SendDeviceFingerprint { get; set; } = true;
+        public bool IncludeMacAddresses { get; set; } = true;
+        public bool IncludeSerialNumbers { get; set; } = true;
+        public bool IncludeProcessDetails { get; set; } = true;
     }
 } 

@@ -137,6 +137,13 @@ $config = @{
         localWhitelist = @()
         localBlacklist = @()
     }
+    uninstallDetectionSettings = @{
+        enableUninstallDetection = $true
+        sendUninstallNotifications = $true
+        captureDeviceInfo = $true
+        logUninstallAttempts = $true
+        requireAdminForUninstall = $true
+    }
 } | ConvertTo-Json -Depth 10
 
 $config | Out-File -FilePath $configPath -Encoding UTF8

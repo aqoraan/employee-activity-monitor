@@ -1,6 +1,6 @@
 # Employee Activity Monitor
 
-A comprehensive Windows application for monitoring employee activities including USB drive usage, file transfers, application installations, and network activities. The system integrates with N8N for automated reporting and email alerts, and includes advanced USB device blocking with Google Sheets whitelist management.
+A comprehensive Windows application for monitoring employee activities including USB drive usage, file transfers, application installations, and network activities. The system integrates with N8N for automated reporting and email alerts, and includes advanced USB device blocking with Google Sheets whitelist management and uninstall detection with device information capture.
 
 ## Features
 
@@ -21,12 +21,21 @@ A comprehensive Windows application for monitoring employee activities including
 - **Fallback Protection**: Local whitelist backup for offline scenarios
 - **Audit Logging**: Complete audit trail of all blocking events
 
+### 🚨 Uninstall Detection & Security
+- **Uninstall Detection**: Detects when software is being uninstalled
+- **Device Information Capture**: Captures serial number, MAC addresses, and device fingerprint
+- **Admin Notification**: Sends detailed device information to administrators
+- **Process Tracking**: Records uninstall process details and command line
+- **Security Alerts**: Critical alerts for unauthorized software removal
+- **Device Fingerprinting**: Unique device identification for tracking
+
 ### 📧 Automated Reporting
 - **N8N Integration**: Sends activity data to N8N workflows
 - **Email Alerts**: Automated email notifications based on activity severity
 - **Configurable Severity Levels**: Low, Medium, High, and Critical alerts
 - **Detailed Activity Reports**: Includes computer name, user, timestamp, and activity details
 - **USB Blocking Alerts**: Special alerts for unauthorized USB device attempts
+- **Uninstall Alerts**: Critical alerts with complete device information
 
 ### 🎨 Modern UI
 - **Real-time Status Indicators**: Visual status for each monitoring component
@@ -103,6 +112,24 @@ Edit `config.json` to enable USB blocking:
 }
 ```
 
+### Uninstall Detection Configuration
+
+```json
+{
+  "uninstallDetectionSettings": {
+    "enableUninstallDetection": true,
+    "sendUninstallNotifications": true,
+    "captureDeviceInfo": true,
+    "logUninstallAttempts": true,
+    "requireAdminForUninstall": true,
+    "sendDeviceFingerprint": true,
+    "includeMacAddresses": true,
+    "includeSerialNumbers": true,
+    "includeProcessDetails": true
+  }
+}
+```
+
 ### Google Sheets Whitelist Format
 
 Create a Google Sheet with the following structure:
@@ -119,6 +146,7 @@ Create a Google Sheet with the following structure:
 |---------------|-------------|------------------|
 | **UsbDrive** | USB device connection/disconnection | Medium |
 | **UsbBlocked** | Unauthorized USB device blocked | High |
+| **UninstallDetected** | Software uninstallation detected | Critical |
 | **FileTransfer** | File operations on external drives | Medium |
 | **AppInstallation** | Software installation detected | Medium |
 | **BlacklistedApp** | Prohibited application detected | High |
@@ -152,6 +180,14 @@ Special handling for USB blocking events:
 - **Security Warnings**: Clear indication of security incident
 - **Action Required**: Prompts for immediate investigation
 
+### Uninstall Detection Alerts
+
+Critical alerts for software uninstallation:
+- **Device Information**: Complete device fingerprint including serial numbers and MAC addresses
+- **Process Details**: Uninstall process information and command line
+- **Security Warnings**: Clear indication of potential security breach
+- **Immediate Action**: Requires immediate investigation and response
+
 ### Email Configuration
 
 Update the email settings in the N8N workflow:
@@ -172,6 +208,14 @@ Update the email settings in the N8N workflow:
 - **Cache Optimization**: Efficient API usage with local caching
 - **Fallback Protection**: Local whitelist for offline scenarios
 
+### Uninstall Detection & Security
+- **Device Fingerprinting**: Unique device identification using multiple identifiers
+- **MAC Address Capture**: All network adapter MAC addresses
+- **Serial Number Tracking**: System, BIOS, and motherboard serial numbers
+- **Process Monitoring**: Uninstall process details and command line capture
+- **Admin Notification**: Immediate alerts with complete device information
+- **Security Auditing**: Complete audit trail of uninstall attempts
+
 ### Administrative Protection
 - **Admin Privileges Required**: All functions require administrative access
 - **Google Workspace Integration**: Admin validation via Google Workspace
@@ -184,6 +228,82 @@ Update the email settings in the N8N workflow:
 - **Secure Storage**: Encrypted storage of sensitive configuration
 - **Audit Logging**: Comprehensive logging of all security events
 - **Access Control**: Restricted access to monitoring data
+
+## Uninstall Detection
+
+### Device Information Captured
+
+When uninstallation is detected, the system captures:
+
+- **Computer Name**: Hostname of the device
+- **User Name**: User performing the uninstallation
+- **Serial Numbers**: System, BIOS, and motherboard serial numbers
+- **MAC Addresses**: All network adapter MAC addresses
+- **Windows Product ID**: Windows license information
+- **Installation Path**: Where the software was installed
+- **Device Fingerprint**: Unique device identifier
+- **Process Information**: Uninstall process details
+
+### Uninstall Notification Email
+
+The system sends detailed emails containing:
+
+```
+🔍 DEVICE INFORMATION 🔍
+Serial Number: ABC123456789
+Primary MAC Address: 00:11:22:33:44:55
+BIOS Serial Number: BIOS123456
+Motherboard Serial Number: MB789012
+Windows Product ID: 12345-67890-ABCDE-FGHIJ
+Installation Path: C:\Program Files\EmployeeActivityMonitor
+Device Fingerprint: DESKTOP-ABC123_ABC123456789_00:11:22:33:44:55
+
+🗑️ UNINSTALL DETAILS 🗑️
+Process ID: 1234
+Process Name: PowerShell
+Command Line: .\uninstall-secure.ps1
+Uninstall Time: 2024-01-15 14:30:25
+
+🚨 CRITICAL SECURITY ALERT 🚨
+The Employee Activity Monitor software has been uninstalled from this computer.
+This may indicate unauthorized removal of security monitoring software.
+
+IMMEDIATE ACTION REQUIRED:
+1. Verify if this uninstallation was authorized
+2. Investigate who performed the uninstallation
+3. Reinstall the monitoring software if unauthorized
+4. Review security logs for suspicious activity
+
+Device identification information has been captured for investigation.
+```
+
+## Secure Uninstallation
+
+### Using the Secure Uninstall Script
+
+```powershell
+# Run as Administrator
+.\uninstall-secure.ps1
+
+# Force uninstall without confirmation
+.\uninstall-secure.ps1 -Force
+
+# Skip notification (not recommended)
+.\uninstall-secure.ps1 -SkipNotification
+```
+
+### Manual Uninstall Commands
+
+```powershell
+# Stop service
+Stop-Service -Name "EmployeeActivityMonitor"
+
+# Remove service
+sc.exe delete "EmployeeActivityMonitor"
+
+# Send uninstall notification
+SystemMonitor.exe --uninstall-notification
+```
 
 ## Troubleshooting
 
@@ -206,6 +326,20 @@ Update the email settings in the N8N workflow:
    - Check cache expiration settings
    - Verify network connectivity
    - Clear application cache if needed
+
+### Uninstall Detection Issues
+
+1. **No Uninstall Notification**
+   - Verify N8N webhook URL is correct
+   - Check network connectivity to N8N
+   - Ensure uninstall detection is enabled
+   - Check Windows Event Logs for errors
+
+2. **Incomplete Device Information**
+   - Run as Administrator for full device access
+   - Check WMI service is running
+   - Verify registry access permissions
+   - Test device information gathering manually
 
 ### General Issues
 
@@ -241,13 +375,20 @@ Update the email settings in the N8N workflow:
 - **Approval Process**: Implement formal device approval process
 - **Incident Response**: Have procedures for unauthorized device attempts
 
+### Uninstall Security Best Practices
+- **Authorized Uninstallations**: Maintain list of authorized uninstallations
+- **Device Tracking**: Use device fingerprints for asset tracking
+- **Incident Response**: Have procedures for unauthorized uninstallations
+- **Reinstallation Procedures**: Automated reinstallation for unauthorized removals
+
 ## Support and Documentation
 
 - **Setup Guide**: [GOOGLE_SHEETS_SETUP.md](GOOGLE_SHEETS_SETUP.md)
 - **Security Documentation**: [SECURITY.md](SECURITY.md)
 - **Quick Setup**: [SETUP.md](SETUP.md)
 - **Deployment Scripts**: `deploy-secure.ps1`
+- **Uninstall Script**: `uninstall-secure.ps1`
 
 ---
 
-**Note**: This application implements enterprise-grade security features including advanced USB device control. Ensure proper authorization and compliance with organizational policies before deployment. 
+**Note**: This application implements enterprise-grade security features including advanced USB device control and uninstall detection with device fingerprinting. Ensure proper authorization and compliance with organizational policies before deployment. 

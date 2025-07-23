@@ -21,6 +21,7 @@ namespace SystemMonitor
         private bool _isMonitoring;
         private UsbBlockingService _usbBlockingService;
         private GoogleSheetsManager _sheetsManager;
+        private UninstallDetectionService _uninstallDetectionService;
 
         public event EventHandler<ActivityEventArgs> ActivityDetected;
 
@@ -43,6 +44,13 @@ namespace SystemMonitor
                 
                 _usbBlockingService = new UsbBlockingService(_sheetsManager, true);
                 _usbBlockingService.UsbBlocked += OnUsbBlocked;
+            }
+
+            // Initialize uninstall detection
+            if (!string.IsNullOrEmpty(_config.N8nWebhookUrl))
+            {
+                _uninstallDetectionService = new UninstallDetectionService(_config.N8nWebhookUrl);
+                _uninstallDetectionService.InitializeUninstallDetection();
             }
         }
 
@@ -86,6 +94,14 @@ namespace SystemMonitor
                 watcher?.Dispose();
             }
             _fileWatchers.Clear();
+        }
+
+        public async Task SendUninstallNotification()
+        {
+            if (_uninstallDetectionService != null)
+            {
+                await _uninstallDetectionService.SendUninstallNotification();
+            }
         }
 
         private void OnUsbBlocked(object sender, UsbBlockingEventArgs e)
@@ -453,6 +469,7 @@ namespace SystemMonitor
             _processWatcher?.Dispose();
             _usbBlockingService?.Dispose();
             _sheetsManager?.Dispose();
+            _uninstallDetectionService?.Dispose();
             
             foreach (var watcher in _fileWatchers)
             {

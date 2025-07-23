@@ -12,6 +12,7 @@ namespace SystemMonitor
         public List<string> SuspiciousDomains { get; set; } = new List<string>();
         public MonitoringSettings MonitoringSettings { get; set; } = new MonitoringSettings();
         public EmailSettings EmailSettings { get; set; } = new EmailSettings();
+        public SecuritySettings SecuritySettings { get; set; } = new SecuritySettings();
 
         public static AppConfig LoadFromFile(string filePath = "config.json")
         {
@@ -48,7 +49,8 @@ namespace SystemMonitor
                 BlacklistedApps = GetDefaultBlacklistedApps(),
                 SuspiciousDomains = GetDefaultSuspiciousDomains(),
                 MonitoringSettings = new MonitoringSettings(),
-                EmailSettings = new EmailSettings()
+                EmailSettings = new EmailSettings(),
+                SecuritySettings = new SecuritySettings()
             };
         }
 
@@ -100,6 +102,7 @@ namespace SystemMonitor
         public bool SendToN8n { get; set; } = true;
         public int N8nRetryAttempts { get; set; } = 3;
         public int N8nRetryDelayMs { get; set; } = 5000;
+        public bool RequireAdminAccess { get; set; } = true;
     }
 
     public class EmailSettings
@@ -113,5 +116,19 @@ namespace SystemMonitor
         public string ToEmail { get; set; } = "admin@yourcompany.com";
         public string CcEmail { get; set; } = "";
         public bool EnableEmailAlerts { get; set; } = false;
+    }
+
+    public class SecuritySettings
+    {
+        public string GoogleWorkspaceAdmin { get; set; } = "";
+        public string GoogleWorkspaceToken { get; set; } = "";
+        public bool PreventUninstallation { get; set; } = true;
+        public bool ProtectConfiguration { get; set; } = true;
+        public bool LogSecurityEvents { get; set; } = true;
+        public bool RequireGoogleWorkspaceAdmin { get; set; } = false;
+        public bool AutoStartOnBoot { get; set; } = true;
+        public bool RunAsService { get; set; } = true;
+        public bool ProtectRegistry { get; set; } = true;
+        public bool AddWindowsDefenderExclusion { get; set; } = true;
     }
 } 

@@ -1,394 +1,550 @@
-# Employee Activity Monitor
-
-A comprehensive Windows application for monitoring employee activities including USB drive usage, file transfers, application installations, and network activities. The system integrates with N8N for automated reporting and email alerts, and includes advanced USB device blocking with Google Sheets whitelist management and uninstall detection with device information capture.
-
-## Features
-
-### 🔍 Monitoring Capabilities
-- **USB Drive Monitoring**: Detects connection/disconnection of USB devices
-- **USB Device Blocking**: Blocks unauthorized USB drives using Google Sheets whitelist
-- **File Transfer Monitoring**: Tracks file operations on USB drives and external storage
-- **Application Installation Monitoring**: Detects software installation activities
-- **Blacklisted Application Detection**: Identifies and alerts on prohibited software
-- **Network Activity Monitoring**: Monitors suspicious network connections
-- **Real-time Activity Logging**: Comprehensive logging of all detected activities
-
-### 🛡️ USB Security Features
-- **Google Sheets Integration**: Centralized USB whitelist management
-- **Real-time Blocking**: Instantly blocks unauthorized USB devices
-- **Device Identification**: Supports multiple USB device ID formats
-- **Cache Management**: Efficient API caching with configurable expiration
-- **Fallback Protection**: Local whitelist backup for offline scenarios
-- **Audit Logging**: Complete audit trail of all blocking events
-
-### 🚨 Uninstall Detection & Security
-- **Uninstall Detection**: Detects when software is being uninstalled
-- **Device Information Capture**: Captures serial number, MAC addresses, and device fingerprint
-- **Admin Notification**: Sends detailed device information to administrators
-- **Process Tracking**: Records uninstall process details and command line
-- **Security Alerts**: Critical alerts for unauthorized software removal
-- **Device Fingerprinting**: Unique device identification for tracking
-
-### 📧 Automated Reporting
-- **N8N Integration**: Sends activity data to N8N workflows
-- **Email Alerts**: Automated email notifications based on activity severity
-- **Configurable Severity Levels**: Low, Medium, High, and Critical alerts
-- **Detailed Activity Reports**: Includes computer name, user, timestamp, and activity details
-- **USB Blocking Alerts**: Special alerts for unauthorized USB device attempts
-- **Uninstall Alerts**: Critical alerts with complete device information
-
-### 🎨 Modern UI
-- **Real-time Status Indicators**: Visual status for each monitoring component
-- **Activity Log Display**: Live scrolling log of detected activities
-- **Export Functionality**: Export activity logs to text files
-- **Administrative Controls**: Start/stop monitoring and test connections
-- **USB Blocking Status**: Visual indicators for USB security status
-
-## System Requirements
-
-- **Operating System**: Windows 10/11 (64-bit)
-- **.NET Runtime**: .NET 6.0 or later
-- **Administrative Privileges**: Required for system monitoring and USB blocking
-- **N8N Instance**: For automated reporting (optional)
-- **Google Cloud Project**: For USB whitelist management (optional)
-
-## Installation
-
-### 1. Build the Application
-
-```bash
-# Navigate to the project directory
-cd SystemMonitor
-
-# Restore NuGet packages
-dotnet restore
-
-# Build the application
-dotnet build --configuration Release
-
-# Publish the application
-dotnet publish --configuration Release --output ./publish
-```
-
-### 2. Deploy with USB Blocking
-
-```powershell
-# Deploy with USB blocking enabled (requires admin)
-.\deploy-secure.ps1 -InstallAsService
-```
-
-### 3. Configure Google Sheets Integration
-
-Follow the detailed setup guide in [GOOGLE_SHEETS_SETUP.md](GOOGLE_SHEETS_SETUP.md) to:
-- Create Google Cloud project
-- Enable Google Sheets API
-- Set up service account
-- Create USB whitelist spreadsheet
-- Configure application settings
-
-## Configuration
-
-### USB Blocking Configuration
-
-Edit `config.json` to enable USB blocking:
-
-```json
-{
-  "usbBlockingSettings": {
-    "enableUsbBlocking": true,
-    "googleSheetsApiKey": "YOUR_API_KEY",
-    "googleSheetsSpreadsheetId": "YOUR_SPREADSHEET_ID",
-    "googleSheetsRange": "A:A",
-    "cacheExpirationMinutes": 5,
-    "blockAllUsbStorage": false,
-    "allowWhitelistedOnly": true,
-    "logBlockedDevices": true,
-    "sendBlockingAlerts": true,
-    "localWhitelist": [
-      "USB\\VID_0951&PID_1666",
-      "USB\\VID_0781&PID_5567"
-    ]
-  }
-}
-```
-
-### Uninstall Detection Configuration
-
-```json
-{
-  "uninstallDetectionSettings": {
-    "enableUninstallDetection": true,
-    "sendUninstallNotifications": true,
-    "captureDeviceInfo": true,
-    "logUninstallAttempts": true,
-    "requireAdminForUninstall": true,
-    "sendDeviceFingerprint": true,
-    "includeMacAddresses": true,
-    "includeSerialNumbers": true,
-    "includeProcessDetails": true
-  }
-}
-```
-
-### Google Sheets Whitelist Format
-
-Create a Google Sheet with the following structure:
-
-| Column A | Column B | Column C |
-|----------|----------|----------|
-| **Device ID** | **Description** | **Approved By** |
-| USB\VID_0951&PID_1666 | Kingston DataTraveler | admin@company.com |
-| USB\VID_0781&PID_5567 | SanDisk Cruzer | admin@company.com |
-
-## Activity Types and Severity
-
-| Activity Type | Description | Default Severity |
-|---------------|-------------|------------------|
-| **UsbDrive** | USB device connection/disconnection | Medium |
-| **UsbBlocked** | Unauthorized USB device blocked | High |
-| **UninstallDetected** | Software uninstallation detected | Critical |
-| **FileTransfer** | File operations on external drives | Medium |
-| **AppInstallation** | Software installation detected | Medium |
-| **BlacklistedApp** | Prohibited application detected | High |
-| **NetworkActivity** | Suspicious network connections | Medium |
-| **System** | System-level events and errors | Variable |
-
-### Severity Levels
-
-- **Low**: Minor activities, informational only
-- **Medium**: Standard monitoring events
-- **High**: Security concerns requiring attention
-- **Critical**: Immediate security threats
-
-## N8N Integration
-
-### Workflow Overview
-
-The N8N workflow processes incoming webhook data and sends email alerts:
-
-1. **Webhook Trigger**: Receives activity data from the monitoring application
-2. **Data Processing**: Extracts and formats activity information
-3. **Severity Filtering**: Routes alerts based on severity level
-4. **Email Sending**: Sends alerts to appropriate recipients
-5. **Response**: Confirms successful processing
-
-### USB Blocking Alerts
-
-Special handling for USB blocking events:
-- **High Priority**: USB blocking events trigger immediate alerts
-- **Detailed Information**: Includes device ID, reason, and timestamp
-- **Security Warnings**: Clear indication of security incident
-- **Action Required**: Prompts for immediate investigation
-
-### Uninstall Detection Alerts
-
-Critical alerts for software uninstallation:
-- **Device Information**: Complete device fingerprint including serial numbers and MAC addresses
-- **Process Details**: Uninstall process information and command line
-- **Security Warnings**: Clear indication of potential security breach
-- **Immediate Action**: Requires immediate investigation and response
-
-### Email Configuration
-
-Update the email settings in the N8N workflow:
-
-```json
-{
-  "fromEmail": "security@yourcompany.com",
-  "toEmail": "admin@yourcompany.com"
-}
-```
-
-## Security Features
-
-### USB Device Control
-- **Whitelist Management**: Centralized Google Sheets management
-- **Real-time Blocking**: Instant blocking of unauthorized devices
-- **Device Identification**: Multiple methods for device ID detection
-- **Cache Optimization**: Efficient API usage with local caching
-- **Fallback Protection**: Local whitelist for offline scenarios
-
-### Uninstall Detection & Security
-- **Device Fingerprinting**: Unique device identification using multiple identifiers
-- **MAC Address Capture**: All network adapter MAC addresses
-- **Serial Number Tracking**: System, BIOS, and motherboard serial numbers
-- **Process Monitoring**: Uninstall process details and command line capture
-- **Admin Notification**: Immediate alerts with complete device information
-- **Security Auditing**: Complete audit trail of uninstall attempts
-
-### Administrative Protection
-- **Admin Privileges Required**: All functions require administrative access
-- **Google Workspace Integration**: Admin validation via Google Workspace
-- **Service-based Operation**: Runs as Windows Service for persistence
-- **Configuration Protection**: Protected configuration files and registry
-- **Uninstallation Prevention**: Prevents unauthorized removal
-
-### Data Security
-- **Encrypted Communication**: HTTPS for all API communications
-- **Secure Storage**: Encrypted storage of sensitive configuration
-- **Audit Logging**: Comprehensive logging of all security events
-- **Access Control**: Restricted access to monitoring data
-
-## Uninstall Detection
-
-### Device Information Captured
-
-When uninstallation is detected, the system captures:
-
-- **Computer Name**: Hostname of the device
-- **User Name**: User performing the uninstallation
-- **Serial Numbers**: System, BIOS, and motherboard serial numbers
-- **MAC Addresses**: All network adapter MAC addresses
-- **Windows Product ID**: Windows license information
-- **Installation Path**: Where the software was installed
-- **Device Fingerprint**: Unique device identifier
-- **Process Information**: Uninstall process details
-
-### Uninstall Notification Email
-
-The system sends detailed emails containing:
-
-```
-🔍 DEVICE INFORMATION 🔍
-Serial Number: ABC123456789
-Primary MAC Address: 00:11:22:33:44:55
-BIOS Serial Number: BIOS123456
-Motherboard Serial Number: MB789012
-Windows Product ID: 12345-67890-ABCDE-FGHIJ
-Installation Path: C:\Program Files\EmployeeActivityMonitor
-Device Fingerprint: DESKTOP-ABC123_ABC123456789_00:11:22:33:44:55
-
-🗑️ UNINSTALL DETAILS 🗑️
-Process ID: 1234
-Process Name: PowerShell
-Command Line: .\uninstall-secure.ps1
-Uninstall Time: 2024-01-15 14:30:25
-
-🚨 CRITICAL SECURITY ALERT 🚨
-The Employee Activity Monitor software has been uninstalled from this computer.
-This may indicate unauthorized removal of security monitoring software.
-
-IMMEDIATE ACTION REQUIRED:
-1. Verify if this uninstallation was authorized
-2. Investigate who performed the uninstallation
-3. Reinstall the monitoring software if unauthorized
-4. Review security logs for suspicious activity
-
-Device identification information has been captured for investigation.
-```
-
-## Secure Uninstallation
-
-### Using the Secure Uninstall Script
-
-```powershell
-# Run as Administrator
-.\uninstall-secure.ps1
-
-# Force uninstall without confirmation
-.\uninstall-secure.ps1 -Force
-
-# Skip notification (not recommended)
-.\uninstall-secure.ps1 -SkipNotification
-```
-
-### Manual Uninstall Commands
-
-```powershell
-# Stop service
-Stop-Service -Name "EmployeeActivityMonitor"
-
-# Remove service
-sc.exe delete "EmployeeActivityMonitor"
-
-# Send uninstall notification
-SystemMonitor.exe --uninstall-notification
-```
-
-## Troubleshooting
-
-### USB Blocking Issues
-
-1. **Device Not Blocked**
-   - Verify USB blocking is enabled in configuration
-   - Check device ID format in Google Sheet
-   - Ensure API key and spreadsheet ID are correct
-   - Check Windows Event Logs for errors
-
-2. **API Connection Issues**
-   - Verify Google Sheets API is enabled
-   - Check API key permissions
-   - Ensure spreadsheet is shared with service account
-   - Test API access manually
-
-3. **Cache Problems**
-   - Restart the monitoring service
-   - Check cache expiration settings
-   - Verify network connectivity
-   - Clear application cache if needed
-
-### Uninstall Detection Issues
-
-1. **No Uninstall Notification**
-   - Verify N8N webhook URL is correct
-   - Check network connectivity to N8N
-   - Ensure uninstall detection is enabled
-   - Check Windows Event Logs for errors
-
-2. **Incomplete Device Information**
-   - Run as Administrator for full device access
-   - Check WMI service is running
-   - Verify registry access permissions
-   - Test device information gathering manually
-
-### General Issues
-
-1. **Service Not Starting**
-   - Run as Administrator
-   - Check .NET Framework installation
-   - Verify Windows Service permissions
-   - Check configuration file syntax
-
-2. **N8N Integration Issues**
-   - Verify N8N is running
-   - Check webhook URL configuration
-   - Test network connectivity
-   - Review N8N workflow logs
-
-## Compliance and Best Practices
-
-### Privacy Considerations
-- **Employee Notification**: Inform employees about monitoring activities
-- **Data Retention**: Implement appropriate data retention policies
-- **Access Control**: Restrict access to monitoring data
-- **Audit Logging**: Maintain logs of who accessed monitoring data
-
-### Security Best Practices
-- **Regular Updates**: Keep application and dependencies updated
-- **API Key Rotation**: Regularly rotate Google API keys
-- **Backup Configuration**: Regularly backup configuration files
-- **Monitor Logs**: Regularly review security and activity logs
-
-### USB Security Best Practices
-- **Regular Whitelist Review**: Periodically review and update whitelist
-- **Device Documentation**: Maintain detailed device documentation
-- **Approval Process**: Implement formal device approval process
-- **Incident Response**: Have procedures for unauthorized device attempts
-
-### Uninstall Security Best Practices
-- **Authorized Uninstallations**: Maintain list of authorized uninstallations
-- **Device Tracking**: Use device fingerprints for asset tracking
-- **Incident Response**: Have procedures for unauthorized uninstallations
-- **Reinstallation Procedures**: Automated reinstallation for unauthorized removals
-
-## Support and Documentation
-
-- **Setup Guide**: [GOOGLE_SHEETS_SETUP.md](GOOGLE_SHEETS_SETUP.md)
-- **Security Documentation**: [SECURITY.md](SECURITY.md)
-- **Quick Setup**: [SETUP.md](SETUP.md)
-- **Deployment Scripts**: `deploy-secure.ps1`
-- **Uninstall Script**: `uninstall-secure.ps1`
+# 🚨 System Monitor - Employee Activity Monitoring
+
+A comprehensive employee activity monitoring solution for Windows and macOS with centralized n8n notification system.
+
+## 📋 Table of Contents
+
+1. [Overview](#overview)
+2. [Features](#features)
+3. [Architecture](#architecture)
+4. [Installation](#installation)
+5. [Configuration](#configuration)
+6. [n8n Integration](#n8n-integration)
+7. [Enhanced Logging](#enhanced-logging)
+8. [Security](#security)
+9. [Troubleshooting](#troubleshooting)
+10. [Emergency Stop Guide](#emergency-stop-guide)
 
 ---
 
-**Note**: This application implements enterprise-grade security features including advanced USB device control and uninstall detection with device fingerprinting. Ensure proper authorization and compliance with organizational policies before deployment. 
+## 🎯 Overview
+
+This project provides a complete employee activity monitoring solution with:
+
+- **Windows Application**: C# WPF application with Windows Services
+- **macOS Application**: Swift/SwiftUI application with LaunchDaemons
+- **n8n Server**: Centralized notification and email system
+- **Enhanced Logging**: Detailed device fingerprinting and event tracking
+- **Security Features**: Admin privilege enforcement, configuration protection
+
+### **Key Capabilities:**
+- USB device monitoring and blocking with Google Sheets whitelist
+- File transfer monitoring with detailed logging
+- Application installation/blacklist detection
+- Network activity monitoring
+- Uninstall detection with immediate alerts
+- Real-time email notifications via n8n
+- Device fingerprinting (MAC, Serial, UUID, Hardware details)
+
+---
+
+## ✨ Features
+
+### **🔍 Monitoring Features:**
+- ✅ **USB Monitoring**: Real-time USB device detection and blocking
+- ✅ **File Transfer Tracking**: Monitor file operations with detailed metadata
+- ✅ **Application Monitoring**: Detect installations and blacklisted apps
+- ✅ **Network Activity**: Monitor suspicious network connections
+- ✅ **Uninstall Detection**: Immediate alerts when monitoring software is removed
+- ✅ **Device Fingerprinting**: MAC addresses, serial numbers, hardware UUIDs
+
+### **📧 Notification System:**
+- ✅ **Email Alerts**: Professional templates with device information
+- ✅ **Severity-based Filtering**: High, Medium, Low priority alerts
+- ✅ **Multiple Recipients**: Admin, Security, IT team notifications
+- ✅ **Real-time Processing**: Instant webhook-based notifications
+
+### **🛡️ Security Features:**
+- ✅ **Admin Privilege Enforcement**: Only Google Workspace admins can modify
+- ✅ **Configuration Protection**: Prevents unauthorized changes
+- ✅ **Auto-start Protection**: Prevents uninstallation and startup removal
+- ✅ **Enhanced Logging**: Comprehensive audit trail with device details
+
+### **🖥️ Platform Support:**
+- ✅ **Windows**: C# WPF with Windows Services
+- ✅ **macOS**: Swift/SwiftUI with LaunchDaemons
+- ✅ **Cross-platform**: Unified n8n notification system
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Windows App   │    │   macOS App     │    │   n8n Server    │
+│                 │    │                 │    │                 │
+│ • USB Monitor   │    │ • USB Monitor   │    │ • Webhook       │
+│ • File Monitor  │    │ • File Monitor  │    │ • Email Alerts  │
+│ • App Monitor   │    │ • App Monitor   │    │ • Slack Notify  │
+│ • Network Mon   │    │ • Network Mon   │    │ • Event Store   │
+│ • Enhanced Log  │    │ • Enhanced Log  │    │ • Dashboard     │
+└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
+          │                      │                      │
+          │                      │                      │
+          └──────────────────────┼──────────────────────┘
+                                 │
+                    ┌─────────────▼─────────────┐
+                    │      Webhook Events       │
+                    │                           │
+                    │ • USB Blocked             │
+                    │ • File Transfer           │
+                    │ • App Installation        │
+                    │ • Uninstall Detected      │
+                    │ • Network Activity        │
+                    └───────────────────────────┘
+```
+
+---
+
+## 🚀 Installation
+
+### **Prerequisites:**
+- Windows 10/11 or macOS 10.15+
+- .NET 6.0+ (Windows) or Xcode 14+ (macOS)
+- Docker and Docker Compose (for n8n server)
+- SMTP server access (Gmail, Outlook, etc.)
+- Google Workspace admin access (for configuration)
+
+### **1. Windows Application Setup:**
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd system_monitor_windows
+
+# Build the application
+cd Windows
+dotnet build
+
+# Install as Windows Service (Run as Administrator)
+sc create EmployeeActivityMonitor binPath= "C:\path\to\EmployeeActivityMonitor.exe"
+sc start EmployeeActivityMonitor
+```
+
+### **2. macOS Application Setup:**
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd system_monitor_windows
+
+# Build the application
+cd MacSystemMonitor
+swift build
+
+# Install as LaunchDaemon (requires sudo)
+sudo cp com.macsystemmonitor.plist /Library/LaunchDaemons/
+sudo launchctl load /Library/LaunchDaemons/com.macsystemmonitor.plist
+```
+
+### **3. n8n Server Setup:**
+
+```bash
+# Navigate to n8n directory
+cd n8n-monitoring-server
+
+# Make scripts executable
+chmod +x setup.sh test-integration.sh
+
+# Run complete setup
+./setup.sh setup
+
+# Configure email settings
+nano .env
+```
+
+---
+
+## ⚙️ Configuration
+
+### **Windows Configuration:**
+
+```json
+{
+  "monitoringSettings": {
+    "enableUsbMonitoring": true,
+    "enableFileMonitoring": true,
+    "enableAppMonitoring": true,
+    "enableNetworkMonitoring": true,
+    "enableUninstallDetection": true
+  },
+  "notificationSettings": {
+    "n8nWebhookUrl": "http://your-n8n-server:5678/webhook/monitoring",
+    "webhookSecret": "your-secret-key"
+  },
+  "securitySettings": {
+    "requireAdminPrivileges": true,
+    "preventUninstallation": true,
+    "protectConfiguration": true
+  }
+}
+```
+
+### **macOS Configuration:**
+
+```json
+{
+  "monitoringSettings": {
+    "enableUsbMonitoring": true,
+    "enableFileMonitoring": true,
+    "enableAppMonitoring": true,
+    "enableNetworkMonitoring": true,
+    "enableUninstallDetection": true
+  },
+  "usbWhitelistSettings": {
+    "googleSheetsId": "your-sheets-id",
+    "googleServiceAccountKey": "path/to/service-account.json"
+  },
+  "notificationSettings": {
+    "n8nWebhookUrl": "http://your-n8n-server:5678/webhook/monitoring",
+    "webhookSecret": "your-secret-key"
+  }
+}
+```
+
+### **n8n Configuration (.env):**
+
+```bash
+# Server Configuration
+N8N_PORT=5678
+N8N_HOST=0.0.0.0
+
+# Email Configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=alerts@yourcompany.com
+
+# Notification Settings
+ADMIN_EMAIL=admin@yourcompany.com
+SECURITY_EMAIL=security@yourcompany.com
+IT_EMAIL=it@yourcompany.com
+
+# Security
+WEBHOOK_SECRET=your-secret-key-here
+WEBHOOK_IP_WHITELIST=192.168.1.0/24,10.0.0.0/8
+```
+
+---
+
+## 🔄 n8n Integration
+
+### **Webhook Endpoint:**
+```
+POST http://your-n8n-server:5678/webhook/monitoring
+```
+
+### **Event Payload Format:**
+```json
+{
+  "timestamp": "2024-01-15T10:30:45.123Z",
+  "type": "USB Blocked",
+  "severity": "High",
+  "description": "USB device blocked: Kingston DataTraveler",
+  "computer": "DESKTOP-ABC123",
+  "user": "john.doe",
+  "details": {
+    "DeviceID": "USB\\VID_0951&PID_1666",
+    "DeviceName": "Kingston DataTraveler",
+    "Blocked": "true"
+  },
+  "deviceInfo": {
+    "serialNumber": "ABC123456789",
+    "primaryMacAddress": "00:11:22:33:44:55",
+    "hardwareUUID": "12345678-1234-1234-1234-123456789ABC"
+  }
+}
+```
+
+### **Email Templates:**
+- **High Severity**: Critical alerts with detailed device information
+- **Medium Severity**: Security warnings with action items
+- **Low Severity**: Information notifications
+
+### **Workflow Features:**
+- Event filtering by severity and type
+- Enhanced logging with device fingerprinting
+- Email generation with professional templates
+- Slack integration (optional)
+- Event storage and audit trail
+
+---
+
+## 📊 Enhanced Logging
+
+### **Device Information Captured:**
+
+#### **Windows:**
+- Serial Number (BIOS)
+- MAC Address (Primary network adapter)
+- Windows Product ID
+- Processor Information
+- Memory Details
+- Disk Information
+- Network Configuration
+
+#### **macOS:**
+- Serial Number (System)
+- MAC Address (Primary network interface)
+- Hardware UUID
+- Model Identifier
+- Processor Information
+- Memory Details
+- Disk Information
+
+### **Event Details:**
+- Timestamp with timezone
+- Computer name and user
+- Event type and severity
+- Detailed event-specific information
+- Device fingerprinting data
+- Source IP and webhook ID
+
+### **Log File Locations:**
+- **Windows**: `C:\ProgramData\EmployeeActivityMonitor\logs\`
+- **macOS**: `/var/log/mac-system-monitor.log`
+- **n8n**: `./logs/n8n-monitor.log`
+
+---
+
+## 🛡️ Security
+
+### **Admin Privilege Enforcement:**
+- Only Google Workspace admins can modify configuration
+- Prevents unauthorized changes to monitoring settings
+- Protects against uninstallation attempts
+
+### **Configuration Protection:**
+- Encrypted configuration files
+- Secure key storage
+- Tamper detection and alerts
+
+### **Network Security:**
+- Webhook authentication with secret keys
+- IP whitelisting for trusted networks
+- Rate limiting to prevent abuse
+- HTTPS/TLS encryption support
+
+### **Data Protection:**
+- Local log encryption
+- Secure transmission to n8n server
+- Audit trail for all configuration changes
+- Device fingerprinting for identification
+
+---
+
+## 🛠️ Management
+
+### **Windows Management:**
+```cmd
+# Start service
+net start EmployeeActivityMonitor
+
+# Stop service
+net stop EmployeeActivityMonitor
+
+# Check status
+sc query EmployeeActivityMonitor
+
+# View logs
+type "C:\ProgramData\EmployeeActivityMonitor\logs\system-monitor.log"
+```
+
+### **macOS Management:**
+```bash
+# Start service
+sudo launchctl start com.macsystemmonitor
+
+# Stop service
+sudo launchctl stop com.macsystemmonitor
+
+# Check status
+sudo launchctl list | grep macsystemmonitor
+
+# View logs
+tail -f /var/log/mac-system-monitor.log
+```
+
+### **n8n Management:**
+```bash
+# Start server
+./setup.sh start
+
+# Stop server
+./setup.sh stop
+
+# Check status
+./setup.sh status
+
+# View logs
+./setup.sh logs
+
+# Test integration
+./test-integration.sh run
+```
+
+---
+
+## 🔍 Troubleshooting
+
+### **Common Issues:**
+
+#### **1. Application Won't Start:**
+```bash
+# Windows
+sc query EmployeeActivityMonitor
+eventvwr.msc  # Check Event Viewer
+
+# macOS
+sudo launchctl list | grep macsystemmonitor
+sudo log show --predicate 'process == "MacSystemMonitor"'
+```
+
+#### **2. Webhook Not Working:**
+```bash
+# Test webhook endpoint
+curl -X POST http://your-n8n-server:5678/webhook/monitoring \
+  -H "Content-Type: application/json" \
+  -d '{"test": "data"}'
+
+# Check n8n logs
+./setup.sh logs
+```
+
+#### **3. Email Not Sending:**
+```bash
+# Test SMTP connection
+telnet smtp.gmail.com 587
+
+# Check email configuration
+nano .env
+```
+
+### **Log Analysis:**
+```bash
+# Windows logs
+Get-Content "C:\ProgramData\EmployeeActivityMonitor\logs\system-monitor.log" -Tail 50
+
+# macOS logs
+tail -50 /var/log/mac-system-monitor.log
+
+# n8n logs
+tail -50 logs/n8n-monitor.log
+```
+
+---
+
+## 🚨 Emergency Stop Guide
+
+For emergency situations, see the comprehensive guide: [EMERGENCY_STOP_GUIDE.md](EMERGENCY_STOP_GUIDE.md)
+
+### **Quick Stop Commands:**
+
+#### **Windows:**
+```cmd
+# Normal stop
+taskkill /f /im EmployeeActivityMonitor.exe
+
+# Emergency stop
+sc stop EmployeeActivityMonitor
+```
+
+#### **macOS:**
+```bash
+# Normal stop
+pkill -f MacSystemMonitor
+
+# Emergency stop
+sudo pkill -9 -f MacSystemMonitor
+```
+
+#### **n8n Server:**
+```bash
+# Stop server
+./setup.sh stop
+
+# Emergency stop
+docker-compose down
+```
+
+---
+
+## 📋 Testing
+
+### **Safe Testing Mode:**
+Both applications include safe testing modes that simulate events without making system changes.
+
+#### **Windows Test Mode:**
+```cmd
+EmployeeActivityMonitor.exe --test-mode
+```
+
+#### **macOS Test Mode:**
+```bash
+./MacSystemMonitor --test-mode
+```
+
+#### **n8n Integration Test:**
+```bash
+./test-integration.sh run
+```
+
+### **Test Events:**
+- USB device connection/blocking
+- File transfer monitoring
+- Application installation detection
+- Network activity monitoring
+- Uninstall detection
+
+---
+
+## 📞 Support
+
+### **Documentation:**
+- [Windows Setup Guide](Windows/README.md)
+- [macOS Setup Guide](MacSystemMonitor/README.md)
+- [n8n Server Guide](n8n-monitoring-server/README.md)
+- [Emergency Stop Guide](EMERGENCY_STOP_GUIDE.md)
+- [Enhanced Logging Guide](ENHANCED_LOGGING_README.md)
+
+### **Getting Help:**
+1. Check the troubleshooting section
+2. Review log files for error messages
+3. Test in safe mode first
+4. Contact system administrator
+
+### **Security Considerations:**
+- Always test in staging environment
+- Use strong encryption keys
+- Regularly update security configurations
+- Monitor for unauthorized access attempts
+- Keep logs for audit purposes
+
+---
+
+## 🔄 Updates and Maintenance
+
+### **Regular Maintenance:**
+- Monitor log files for errors
+- Update security configurations
+- Backup configuration files
+- Test webhook connectivity
+- Verify email notifications
+
+### **Version Updates:**
+1. Backup current configuration
+2. Test new version in staging
+3. Deploy to production
+4. Monitor for issues
+5. Update documentation
+
+---
+
+## 📄 License
+
+This project is for enterprise use only. Please ensure compliance with local privacy and monitoring laws.
+
+---
+
+**Remember**: Always test changes in a staging environment before deploying to production! 

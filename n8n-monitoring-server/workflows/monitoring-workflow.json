@@ -1,0 +1,348 @@
+{
+  "name": "Mac System Monitor - Security Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook/monitoring",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "monitoring-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "severity-check",
+              "leftValue": "={{ $json.severity }}",
+              "rightValue": "High",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "high-severity-filter",
+      "name": "High Severity Filter",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "usb-blocked-check",
+              "leftValue": "={{ $json.type }}",
+              "rightValue": "USB Blocked",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "usb-blocked-filter",
+      "name": "USB Blocked Filter",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "uninstall-check",
+              "leftValue": "={{ $json.type }}",
+              "rightValue": "Uninstall Detected",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "uninstall-filter",
+      "name": "Uninstall Filter",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced Logging Function\nconst event = $input.first().json;\n\n// Create detailed log entry\nconst logEntry = {\n  timestamp: new Date().toISOString(),\n  eventType: event.type,\n  severity: event.severity,\n  description: event.description,\n  computer: event.computer,\n  user: event.user,\n  details: event.details,\n  deviceInfo: event.deviceInfo,\n  webhookId: $webhookId,\n  sourceIp: $request.ip\n};\n\n// Log to console for debugging\nconsole.log('🔍 ENHANCED LOG ENTRY:', JSON.stringify(logEntry, null, 2));\n\n// Store in execution data for later use\n$execution.data.logEntry = logEntry;\n\nreturn [{\n  json: logEntry\n}];"
+      },
+      "id": "enhanced-logging",
+      "name": "Enhanced Logging",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Create Email Content Function\nconst event = $input.first().json;\nconst deviceInfo = event.deviceInfo || {};\n\n// Determine email subject and priority\nlet subject = '';\nlet priority = 'normal';\nlet recipients = [];\n\nif (event.severity === 'Critical' || event.severity === 'High') {\n  subject = `🚨 CRITICAL ALERT - ${event.type} on ${event.computer}`;\n  priority = 'high';\n  recipients = ['security@yourcompany.com', 'admin@yourcompany.com'];\n} else if (event.severity === 'Medium') {\n  subject = `⚠️ Security Alert - ${event.type} on ${event.computer}`;\n  priority = 'normal';\n  recipients = ['it@yourcompany.com'];\n} else {\n  subject = `ℹ️ Information - ${event.type} on ${event.computer}`;\n  priority = 'low';\n  recipients = ['admin@yourcompany.com'];\n}\n\n// Create detailed email content\nconst emailContent = {\n  subject: subject,\n  priority: priority,\n  recipients: recipients,\n  html: `\n    <html>\n    <head>\n      <style>\n        body { font-family: Arial, sans-serif; margin: 20px; }\n        .header { background-color: #f8f9fa; padding: 15px; border-radius: 5px; }\n        .alert { background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin: 10px 0; border-radius: 5px; }\n        .critical { background-color: #f8d7da; border-color: #f5c6cb; }\n        .info { background-color: #d1ecf1; border-color: #bee5eb; }\n        .details { background-color: #e2e3e5; padding: 10px; margin: 10px 0; border-radius: 3px; }\n        .device-info { background-color: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; }\n        .actions { background-color: #d4edda; padding: 10px; margin: 10px 0; border-radius: 3px; }\n      </style>\n    </head>\n    <body>\n      <div class=\"header\">\n        <h2>${subject}</h2>\n        <p><strong>Time:</strong> ${new Date(event.timestamp).toLocaleString()}</p>\n      </div>\n      \n      <div class=\"alert ${event.severity === 'Critical' || event.severity === 'High' ? 'critical' : 'info'}\">\n        <h3>Event Details</h3>\n        <p><strong>Type:</strong> ${event.type}</p>\n        <p><strong>Severity:</strong> ${event.severity}</p>\n        <p><strong>Computer:</strong> ${event.computer}</p>\n        <p><strong>User:</strong> ${event.user}</p>\n        <p><strong>Description:</strong> ${event.description}</p>\n      </div>\n      \n      <div class=\"device-info\">\n        <h3>Device Information</h3>\n        <p><strong>Serial Number:</strong> ${deviceInfo.serialNumber || 'Unknown'}</p>\n        <p><strong>MAC Address:</strong> ${deviceInfo.primaryMacAddress || 'Unknown'}</p>\n        <p><strong>Hardware UUID:</strong> ${deviceInfo.hardwareUUID || 'Unknown'}</p>\n        <p><strong>Model:</strong> ${deviceInfo.modelIdentifier || 'Unknown'}</p>\n        <p><strong>Processor:</strong> ${deviceInfo.processorInfo || 'Unknown'}</p>\n        <p><strong>Memory:</strong> ${deviceInfo.memoryInfo || 'Unknown'}</p>\n        <p><strong>Disk:</strong> ${deviceInfo.diskInfo || 'Unknown'}</p>\n      </div>\n      \n      ${event.details ? `<div class=\"details\">\n        <h3>Event Details</h3>\n        ${Object.entries(event.details).map(([key, value]) => `<p><strong>${key}:</strong> ${value}</p>`).join('')}\n      </div>` : ''}\n      \n      <div class=\"actions\">\n        <h3>Recommended Actions</h3>\n        <ul>\n          <li>Immediately investigate the affected device</li>\n          <li>Check for unauthorized access</li>\n          <li>Review security logs</li>\n          <li>Contact the user if necessary</li>\n          <li>Update security policies if needed</li>\n        </ul>\n      </div>\n      \n      <hr>\n      <p><em>This alert was generated by the Security Monitoring System</em></p>\n    </body>\n    </html>\n  `,\n  text: `\n${subject}\n\nEvent Details:\n- Type: ${event.type}\n- Severity: ${event.severity}\n- Time: ${new Date(event.timestamp).toLocaleString()}\n- Computer: ${event.computer}\n- User: ${event.user}\n- Description: ${event.description}\n\nDevice Information:\n- Serial Number: ${deviceInfo.serialNumber || 'Unknown'}\n- MAC Address: ${deviceInfo.primaryMacAddress || 'Unknown'}\n- Hardware UUID: ${deviceInfo.hardwareUUID || 'Unknown'}\n\n${event.details ? `Event Details:\n${Object.entries(event.details).map(([key, value]) => `- ${key}: ${value}`).join('\\n')}\n` : ''}\n\nRecommended Actions:\n1. Immediately investigate the affected device\n2. Check for unauthorized access\n3. Review security logs\n4. Contact the user if necessary\n\n---\nThis alert was generated by the Security Monitoring System\n  `\n};\n\nreturn [{\n  json: emailContent\n}];"
+      },
+      "id": "create-email-content",
+      "name": "Create Email Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "smtp",
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $json.recipients.join(',') }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {
+          "allowUnauthorizedCerts": false
+        }
+      },
+      "id": "send-email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-credentials",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Create Slack Notification Function\nconst event = $input.first().json;\nconst emailContent = $('Create Email Content').first().json;\n\n// Determine Slack channel based on severity\nlet channel = '#general';\nif (event.severity === 'Critical' || event.severity === 'High') {\n  channel = '#security-alerts';\n} else if (event.severity === 'Medium') {\n  channel = '#it-alerts';\n} else {\n  channel = '#monitoring';\n}\n\n// Create Slack message\nconst slackMessage = {\n  channel: channel,\n  text: `*${emailContent.subject}*\\n\\n${event.description}\\n\\n*Device:* ${event.computer}\\n*User:* ${event.user}\\n*Time:* ${new Date(event.timestamp).toLocaleString()}\\n\\n<${$env.N8N_WEBHOOK_URL}/workflow/${$workflow.id}|View Details>`,\n  attachments: [\n    {\n      color: event.severity === 'Critical' || event.severity === 'High' ? '#ff0000' : '#ffa500',\n      fields: [\n        {\n          title: 'Severity',\n          value: event.severity,\n          short: true\n        },\n        {\n          title: 'Type',\n          value: event.type,\n          short: true\n        },\n        {\n          title: 'Serial Number',\n          value: event.deviceInfo?.serialNumber || 'Unknown',\n          short: true\n        },\n        {\n          title: 'MAC Address',\n          value: event.deviceInfo?.primaryMacAddress || 'Unknown',\n          short: true\n        }\n      ]\n    }\n  ]\n};\n\nreturn [{\n  json: slackMessage\n}];"
+      },
+      "id": "create-slack-notification",
+      "name": "Create Slack Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 500]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "url": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-slack",
+      "name": "Send Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 500],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "slack-webhook",
+          "name": "Slack Webhook"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Store Event Function\nconst event = $input.first().json;\n\n// Create event record for storage\nconst eventRecord = {\n  id: Date.now().toString(),\n  timestamp: new Date().toISOString(),\n  eventType: event.eventType,\n  severity: event.severity,\n  description: event.description,\n  computer: event.computer,\n  user: event.user,\n  deviceInfo: event.deviceInfo,\n  details: event.details,\n  processed: true,\n  emailSent: true,\n  slackSent: true\n};\n\n// In a real implementation, you would store this in a database\n// For now, we'll just log it\nconsole.log('📊 EVENT STORED:', JSON.stringify(eventRecord, null, 2));\n\n// You could also store in n8n's execution data for later retrieval\n$execution.data.storedEvents = $execution.data.storedEvents || [];\n$execution.data.storedEvents.push(eventRecord);\n\nreturn [{\n  json: {\n    success: true,\n    eventId: eventRecord.id,\n    message: 'Event processed and stored successfully'\n  }\n}];"
+      },
+      "id": "store-event",
+      "name": "Store Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1780, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "High Severity Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "High Severity Filter": {
+      "main": [
+        [
+          {
+            "node": "USB Blocked Filter",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Uninstall Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "USB Blocked Filter": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Logging",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uninstall Filter": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Logging",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enhanced Logging": {
+      "main": [
+        [
+          {
+            "node": "Create Email Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Email Content": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Create Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Slack Notification": {
+      "main": [
+        [
+          {
+            "node": "Send Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Slack": {
+      "main": [
+        [
+          {
+            "node": "Store Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Event": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "monitoring-workflow",
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:30:45.123Z",
+      "updatedAt": "2024-01-15T10:30:45.123Z",
+      "id": "monitoring",
+      "name": "monitoring"
+    },
+    {
+      "createdAt": "2024-01-15T10:30:45.123Z",
+      "updatedAt": "2024-01-15T10:30:45.123Z",
+      "id": "security",
+      "name": "security"
+    }
+  ]
+} 

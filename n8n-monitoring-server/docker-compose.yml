@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n-monitoring-server
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # Server Configuration
+      - N8N_PORT=5678
+      - N8N_HOST=0.0.0.0
+      - N8N_PROTOCOL=http
+      - N8N_USER_MANAGEMENT_DISABLED=true
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_DISABLE_UI=false
+      
+      # Database Configuration
+      - DB_TYPE=sqlite
+      - DB_SQLITE_VACUUM_ON_STARTUP=true
+      - DB_SQLITE_DATABASE=/home/node/.n8n/database.sqlite
+      
+      # Security Configuration
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-your-secret-key-here}
+      - WEBHOOK_IP_WHITELIST=${WEBHOOK_IP_WHITELIST:-192.168.1.0/24,10.0.0.0/8}
+      
+      # Email Configuration
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-your-email@gmail.com}
+      - SMTP_PASS=${SMTP_PASS:-your-app-password}
+      - SMTP_FROM=${SMTP_FROM:-alerts@yourcompany.com}
+      
+      # Notification Settings
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@yourcompany.com}
+      - SECURITY_EMAIL=${SECURITY_EMAIL:-security@yourcompany.com}
+      - IT_EMAIL=${IT_EMAIL:-it@yourcompany.com}
+      
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - N8N_LOG_LEVEL=${N8N_LOG_LEVEL:-info}
+      
+      # Performance
+      - N8N_METRICS=true
+      - N8N_METRICS_PREFIX=n8n_monitoring
+      
+      # Security
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-your-encryption-key-here}
+      - N8N_JWT_SECRET=${N8N_JWT_SECRET:-your-jwt-secret-here}
+      
+    volumes:
+      - ./data:/home/node/.n8n
+      - ./workflows:/home/node/.n8n/workflows
+      - ./logs:/home/node/.n8n/logs
+      - ./backup:/home/node/.n8n/backup
+      
+    networks:
+      - monitoring-network
+      
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Redis for caching (uncomment if needed)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: n8n-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   networks:
+  #     - monitoring-network
+
+  # Optional: PostgreSQL for production (uncomment if needed)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: n8n-postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     - POSTGRES_DB=n8n
+  #     - POSTGRES_USER=n8n
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-your-postgres-password}
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   networks:
+  #     - monitoring-network
+
+networks:
+  monitoring-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  # redis-data:
+  # postgres-data: 

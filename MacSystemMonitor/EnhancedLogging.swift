@@ -22,7 +22,10 @@ class EnhancedLogging {
             self.writeLogEntry(logEntry)
         }
         
-        // Also print to console for debugging
+        // Print enhanced log to console
+        printEnhancedLog(logEntry)
+        
+        // Also print simple event message
         print("📝 LOGGED EVENT: \(event.description)")
     }
     
@@ -344,6 +347,44 @@ class EnhancedLogging {
         statistics["recentActivity"] = Array(allLogs.prefix(10))
         
         return statistics
+    }
+    
+    // MARK: - Console Output
+    
+    private func printEnhancedLog(_ logEntry: [String: Any]) {
+        print("🔍 ENHANCED LOG ENTRY:")
+        print("📅 Time: \(logEntry["timestamp"] ?? "Unknown")")
+        print("🖥️ Computer: \(logEntry["computer"] ?? "Unknown")")
+        print("👤 User: \(logEntry["user"] ?? "Unknown")")
+        
+        if let deviceInfo = logEntry["deviceInfo"] as? [String: Any] {
+            print("📱 Serial Number: \(deviceInfo["serialNumber"] ?? "Unknown")")
+            print("🌐 MAC Address: \(deviceInfo["primaryMacAddress"] ?? "Unknown")")
+            print("🔧 Hardware UUID: \(deviceInfo["hardwareUUID"] ?? "Unknown")")
+            print("💻 Model: \(deviceInfo["modelIdentifier"] ?? "Unknown")")
+            print("⚡ Processor: \(deviceInfo["processorInfo"] ?? "Unknown")")
+            print("💾 Memory: \(deviceInfo["memoryInfo"] ?? "Unknown")")
+            print("💿 Disk: \(deviceInfo["diskInfo"] ?? "Unknown")")
+        } else {
+            print("📱 Serial Number: Unknown")
+            print("🌐 MAC Address: Unknown")
+            print("🔧 Hardware UUID: Unknown")
+            print("💻 Model: Unknown")
+            print("⚡ Processor: Unknown")
+            print("💾 Memory: Unknown")
+            print("💿 Disk: Unknown")
+        }
+        
+        print("🎯 Event: \(logEntry["description"] ?? "Unknown")")
+        
+        if let details = logEntry["details"] as? [String: String] {
+            print("📋 Details:")
+            for (key, value) in details {
+                print("   \(key): \(value)")
+            }
+        }
+        
+        print("---")
     }
 }
 

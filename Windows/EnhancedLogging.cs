@@ -58,7 +58,10 @@ namespace EmployeeActivityMonitor
             
             await Task.Run(() => WriteLogEntry(logEntry));
             
-            // Also print to console for debugging
+            // Print enhanced log to console
+            PrintEnhancedLog(logEntry);
+            
+            // Also print simple event message
             Console.WriteLine($"📝 LOGGED EVENT: {activityEvent.Description}");
         }
         
@@ -298,6 +301,52 @@ namespace EmployeeActivityMonitor
             }
             
             return logEntry;
+        }
+        
+        // MARK: - Console Output
+        
+        private void PrintEnhancedLog(Dictionary<string, object> logEntry)
+        {
+            Console.WriteLine("🔍 ENHANCED LOG ENTRY:");
+            Console.WriteLine($"📅 Time: {logEntry.GetValueOrDefault("timestamp", "Unknown")}");
+            Console.WriteLine($"🖥️ Computer: {logEntry.GetValueOrDefault("computer", "Unknown")}");
+            Console.WriteLine($"👤 User: {logEntry.GetValueOrDefault("user", "Unknown")}");
+            
+            if (logEntry.ContainsKey("deviceInfo") && logEntry["deviceInfo"] is Dictionary<string, object> deviceInfo)
+            {
+                Console.WriteLine($"📱 Serial Number: {deviceInfo.GetValueOrDefault("serialNumber", "Unknown")}");
+                Console.WriteLine($"🌐 MAC Address: {deviceInfo.GetValueOrDefault("primaryMacAddress", "Unknown")}");
+                Console.WriteLine($"🔧 BIOS Serial: {deviceInfo.GetValueOrDefault("biosSerialNumber", "Unknown")}");
+                Console.WriteLine($"💻 Windows Product ID: {deviceInfo.GetValueOrDefault("windowsProductId", "Unknown")}");
+                Console.WriteLine($"⚡ Processor: {deviceInfo.GetValueOrDefault("processorInfo", "Unknown")}");
+                Console.WriteLine($"💾 Memory: {deviceInfo.GetValueOrDefault("memoryInfo", "Unknown")}");
+                Console.WriteLine($"💿 Disk: {deviceInfo.GetValueOrDefault("diskInfo", "Unknown")}");
+                Console.WriteLine($"🌐 Network: {deviceInfo.GetValueOrDefault("networkInfo", "Unknown")}");
+            }
+            else
+            {
+                Console.WriteLine("📱 Serial Number: Unknown");
+                Console.WriteLine("🌐 MAC Address: Unknown");
+                Console.WriteLine("🔧 BIOS Serial: Unknown");
+                Console.WriteLine("💻 Windows Product ID: Unknown");
+                Console.WriteLine("⚡ Processor: Unknown");
+                Console.WriteLine("💾 Memory: Unknown");
+                Console.WriteLine("💿 Disk: Unknown");
+                Console.WriteLine("🌐 Network: Unknown");
+            }
+            
+            Console.WriteLine($"🎯 Event: {logEntry.GetValueOrDefault("description", "Unknown")}");
+            
+            if (logEntry.ContainsKey("details") && logEntry["details"] is Dictionary<string, string> details)
+            {
+                Console.WriteLine("📋 Details:");
+                foreach (var kvp in details)
+                {
+                    Console.WriteLine($"   {kvp.Key}: {kvp.Value}");
+                }
+            }
+            
+            Console.WriteLine("---");
         }
         
         // MARK: - File Operations

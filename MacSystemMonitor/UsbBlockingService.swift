@@ -124,18 +124,49 @@ class UsbBlockingService {
         let deviceInfo = getUsbDeviceInfo(from: service)
         
         Task {
-            let isWhitelisted = await sheetsManager.isDeviceWhitelisted(deviceInfo.deviceId)
-            
-            if !isWhitelisted {
-                await blockUsbDevice(deviceInfo)
-            } else {
-                print("USB device allowed: \(deviceInfo.deviceName ?? deviceInfo.deviceId)")
-            }
+            await handleUsbDeviceConnected(service)
+        }
+    }
+    
+    private func handleUsbDeviceConnected(_ service: io_object_t) async {
+        let deviceInfo = getUsbDeviceInfo(from: service)
+        
+        // Check if device is in whitelist
+        if let sheetsManager = sheetsManager, !sheetsManager.isDeviceWhitelisted(deviceInfo) {
+            // Use enhanced logging for blocked device
+            EnhancedLogging.shared.logUsbEvent(deviceInfo: deviceInfo, blocked: true, reason: "Device not in whitelist")
+            await blockUsbDevice(deviceInfo)
+        } else {
+            // Use enhanced logging for allowed device
+            EnhancedLogging.shared.logUsbEvent(deviceInfo: deviceInfo, blocked: false, reason: "Device in whitelist")
+            print("USB device allowed: \(deviceInfo.deviceName ?? deviceInfo.deviceId)")
         }
     }
     
     private func handleUsbDeviceRemoved(_ service: io_object_t) {
         let deviceInfo = getUsbDeviceInfo(from: service)
+        
+        // Log USB device removal
+        let event = ActivityEvent(
+            type: .usbDrive,
+            description: "USB device removed: \(deviceInfo.deviceName ?? deviceInfo.deviceId)",
+            severity: .low,
+            details: [
+                "DeviceID": deviceInfo.deviceId,
+                "DeviceName": deviceInfo.deviceName ?? "Unknown",
+                "EventType": "Removed"
+            ]
+        )
+        
+        let deviceInfoObj = DeviceInfoManager.getDeviceInfo()
+        EnhancedLogging.shared.logEvent(event, deviceInfo: deviceInfoObj, additionalDetails: [
+            "usbRemovalDetails": [
+                "deviceId": deviceInfo.deviceId,
+                "deviceName": deviceInfo.deviceName ?? "Unknown",
+                "eventType": "Removed"
+            ]
+        ])
+        
         print("USB device removed: \(deviceInfo.deviceName ?? deviceInfo.deviceId)")
         
         delegate?.usbDeviceRemoved(deviceInfo)
@@ -212,6 +243,29 @@ class UsbBlockingService {
         )
         
         delegate?.usbDeviceBlocked(blockingEvent)
+        
+        // Log the blocking result with enhanced logging
+        let event = ActivityEvent(
+            type: .usbBlocked,
+            description: success ? "Successfully blocked USB device: \(deviceInfo.deviceName ?? deviceInfo.deviceId)" : "Failed to block USB device: \(deviceInfo.deviceName ?? deviceInfo.deviceId)",
+            severity: success ? .high : .critical,
+            details: [
+                "DeviceID": deviceInfo.deviceId,
+                "DeviceName": deviceInfo.deviceName ?? "Unknown",
+                "Blocked": String(success),
+                "Reason": "Device not in whitelist"
+            ]
+        )
+        
+        let deviceInfoObj = DeviceInfoManager.getDeviceInfo()
+        EnhancedLogging.shared.logEvent(event, deviceInfo: deviceInfoObj, additionalDetails: [
+            "usbBlockingDetails": [
+                "deviceId": deviceInfo.deviceId,
+                "deviceName": deviceInfo.deviceName ?? "Unknown",
+                "blocked": success,
+                "reason": "Device not in whitelist"
+            ]
+        ])
         
         if success {
             print("Successfully blocked USB device: \(deviceInfo.deviceName ?? deviceInfo.deviceId)")
